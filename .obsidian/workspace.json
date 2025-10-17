@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "README.md",
+                "file": "design/concepts/HikingApp/implementation.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "README"
+              "title": "implementation"
             }
           }
         ]
@@ -171,6 +171,41 @@
   },
   "active": "60ccb8b74e272dda",
   "lastOpenFiles": [
-    "README.md"
+    "context/design/concepts/HikingApp/implementation.md/20251016_211218.28903799.md",
+    "context/design/concepts/HikingApp/implementation.md/steps/response.8fe16308.md",
+    "context/design/concepts/HikingApp/implementation.md/20251016_211145.2ab12201.md",
+    "context/design/concepts/HikingApp/implementation.md/steps/_.b90d25ac.md",
+    "src/concepts/HikingApp/ExternalRoutingEngine.ts",
+    "src/concepts/HikingApp/ExternalRoutingEngine.test.ts",
+    "src/concepts/HikingApp/ExternalRoutingEngine.md",
+    "context/design/concepts/HikingApp/implementation.md/20251016_210047.d81a87a7.md",
+    "context/design/concepts/HikingApp/implementation.md/steps/response.b5894d34.md",
+    "context/design/concepts/HikingApp/implementation.md/20251016_205950.69cbb76d.md",
+    "context/design/concepts/HikingApp/implementation.md/steps/prompt.0ee779d1.md",
+    "design/concepts/HikingApp/HikingApp.md",
+    "design/concepts/HikingApp/implementation.md",
+    "context/design/concepts/HikingApp/implementation.md/20251016_205336.d72f9c96.md",
+    "context/design/concepts/HikingApp/implementation.md/steps/response.324f3bca.md",
+    "context/design/concepts/HikingApp/implementation.md/20251016_205244.0874322d.md",
+    "context/design/concepts/HikingApp/implementation.md/steps/prompt.a26e0e8f.md",
+    "context/design/concepts/HikingApp/implementation.md/20251016_205141.99bf0d5e.md",
+    "context/design/concepts/HikingApp/implementation.md/steps/response.5fd0ac0d.md",
+    "context/design/concepts/HikingApp/implementation.md/20251016_205038.b3d6e83a.md",
+    "context/design/concepts/HikingApp/implementation.md/steps/prompt.36fd90f4.md",
+    "design/concepts/HikingApp/ExternalRoutingEngine.md",
+    "context/design/concepts/HikingApp/implementation.md/20251016_204010.137232b5.md",
+    "context/design/concepts/HikingApp/implementation.md/steps/response.45aa6fb6.md",
+    "context/design/concepts/HikingApp/implementation.md/20251016_203935.a6d8d1e5.md",
+    "context/design/concepts/HikingApp/implementation.md/steps/Testing.c6dbe9ec.md",
+    "context/design/concepts/HikingApp/implementation.md/20251016_203910.b88bd592.md",
+    "context/design/concepts/HikingApp/implementation.md/steps/response.6d76b65d.md",
+    "src/concepts/HikingApp/ConstraintMonitor.test.ts",
+    "src/concepts/HikingApp/ConstraintMonitor.ts",
+    "src/concepts/HikingApp/DynamicExitPlanner.test.ts",
+    "src/concepts/HikingApp/Dynamic",
+    "src/concepts/HikingApp/DynamicExitPlanner.ts",
+    "src/concepts/HikingApp/SynamicExitPlanner.ts",
+    "src/concepts/HikingApp/TransitRoutePlanner.test.ts",
+    "src/concepts/HikingApp/TransitRoutePlanner.ts"
   ]
 }
