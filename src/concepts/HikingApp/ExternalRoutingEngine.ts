@@ -301,6 +301,11 @@ export class ExternalRoutingEngine {
     return new ExternalRoutingEngine(db, defaultProvider);
   }
 
+  // Add a new factory method that accepts a Db instance
+  public static createWithDb(db: Db, provider: RoutingProvider): ExternalRoutingEngine {
+    return new ExternalRoutingEngine(db, provider);
+  }
+
   /**
    * Validates latitude and longitude values.
    */
@@ -428,12 +433,16 @@ export class ExternalRoutingEngine {
     const newDataHash = await this.hashObject(mockFetchedData);
 
     const existingData = await this.networkData.findOne({ source: source });
+    console.log("DEBUG: existingData:", existingData);
+    console.log("DEBUG: newDataHash:", newDataHash);
 
     if (existingData && existingData.dataHash === newDataHash) {
+        console.log("DEBUG: No update needed, data unchanged");
         return false; // No update needed
     }
 
-    await this.networkData.updateOne(
+    console.log("DEBUG: Performing upsert operation");
+    const result = await this.networkData.updateOne(
         { source: source },
         {
             $set: {
@@ -447,6 +456,16 @@ export class ExternalRoutingEngine {
         },
         { upsert: true }
     );
+
+    console.log("DEBUG: Upsert result:", result);
+    
+    // Check if document was actually inserted
+    const insertedDoc = await this.networkData.findOne({ source: source });
+    console.log("DEBUG: Document after upsert:", insertedDoc);
+    
+    // Count documents to verify
+    const docCount = await this.networkData.countDocuments({ source: source });
+    console.log("DEBUG: Document count for source:", source, "is:", docCount);
 
     return true; // Data was updated
   }

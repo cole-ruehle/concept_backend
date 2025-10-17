@@ -303,6 +303,17 @@ Deno.test("Scenario: With LLM Stub, Severity is Overridden", async () => {
   await withTestDb(async (db, monitor, stubs) => {
     console.log("\n--- Testing: LLM Severity Scoring ---");
 
+    // Create a new monitor with LLM provider for this test only
+    const llmMonitor = new ConstraintMonitorConcept(
+      db,
+      {
+        transit: stubs.transitProvider,
+        weather: stubs.weatherProvider,
+        trail: stubs.trailProvider,
+      },
+      stubs.llmProvider, // Inject LLM provider
+    );
+
     // Setup: LLM stub returns a high, specific score
     stubs.llmProvider.scoreSeverity = async (_text: string) => 99;
     console.log("Inputs: Injected LLM provider that returns severity 99");
@@ -315,14 +326,14 @@ Deno.test("Scenario: With LLM Stub, Severity is Overridden", async () => {
       expectedStartIso: new Date().toISOString(),
       expectedEndIso: new Date().toISOString(),
     });
-    await monitor.updateTransitSchedules(); // populate transit data
+    await llmMonitor.updateTransitSchedules(); // populate transit data
     const routeId = routeResult.insertedId.toHexString();
 
-    const alertIds = await monitor.generateAlerts(routeId);
+    const alertIds = await llmMonitor.generateAlerts(routeId);
     console.log(`Outputs: generateAlerts -> ids:`, alertIds);
 
     assertEquals(alertIds.length, 1);
-    const alertSummary = await monitor.getAlertSummary(alertIds[0]);
+    const alertSummary = await llmMonitor.getAlertSummary(alertIds[0]);
     console.log(`Outputs: alertSummary ->`, alertSummary);
 
     const ruleBasedSeverity = 40; // from implementation for transit headway
