@@ -2,7 +2,7 @@
 
 ## Overview
 
-The DynamicExitPlanner component manages the complete lifecycle of hiking activities, including starting hikes, updating locations, generating exit strategies, and ending hikes. It handles state management, conflict resolution, and provides dynamic exit planning based on real-time conditions.
+The DynamicExitPlanner tests check that the system can manage the full hike lifecycle - starting hikes, updating locations, generating exit strategies, and ending hikes. I tested state management, conflict resolution, and dynamic exit planning.
 
 ## Test Execution Summary
 
@@ -15,7 +15,7 @@ The DynamicExitPlanner component manages the complete lifecycle of hiking activi
 
 ### 1. Operational Principle: Full Hike Lifecycle
 
-**Purpose**: Validates the complete end-to-end hike management workflow.
+**Purpose**: Tests the complete hike workflow from start to finish.
 
 **Test Flow** (6 steps):
 1. **Seed exit points**: Creates 3 exit points in the database
@@ -36,7 +36,7 @@ The DynamicExitPlanner component manages the complete lifecycle of hiking activi
 
 ### 2. Conflict: Starting a Second Hike for the Same User Fails
 
-**Purpose**: Validates that users cannot start multiple concurrent hikes.
+**Purpose**: Tests that users can't start multiple hikes at the same time.
 
 **Test Flow**:
 - Starts first hike for user `user-alice-123`

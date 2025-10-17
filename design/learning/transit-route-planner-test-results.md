@@ -2,7 +2,7 @@
 
 ## Overview
 
-The TransitRoutePlanner component handles planning transit routes to trailheads with time constraints, including alternative route generation, constraint updates, and scenic route selection using LLM integration.
+The TransitRoutePlanner tests check that the system can plan transit routes to trailheads with time constraints, generate alternative routes, update constraints, and select scenic routes using LLM integration.
 
 ## Test Execution Summary
 
@@ -15,7 +15,7 @@ The TransitRoutePlanner component handles planning transit routes to trailheads 
 
 ### 1. Operational Principle (Happy Path): Plan Feasible Route
 
-**Purpose**: Validates core route planning functionality with realistic constraints.
+**Purpose**: Tests that route planning works with realistic time constraints.
 
 **Test Inputs**:
 - Origin: (37.775, -122.419)
@@ -38,7 +38,7 @@ The TransitRoutePlanner component handles planning transit routes to trailheads 
 
 ### 2. Scenario: Tight Time Window Selection
 
-**Purpose**: Validates route selection when time constraints are tight.
+**Purpose**: Tests that the system can select routes when time is limited.
 
 **Test Inputs**:
 - Max Time: 280 minutes (4.7 hours)

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The ExternalRoutingEngine component handles external routing calculations, network data management, and provides fallback mechanisms for route data. It integrates with external routing providers and manages route storage and retrieval.
+The ExternalRoutingEngine tests check that the system can handle external routing calculations, manage network data, and provide fallback mechanisms. I tested integration with external routing providers and route storage/retrieval.
 
 ## Test Execution Summary
 
@@ -15,7 +15,7 @@ The ExternalRoutingEngine component handles external routing calculations, netwo
 
 ### 1. Operational Principle (Happy Path): calculateRoute
 
-**Purpose**: Validates core route calculation functionality.
+**Purpose**: Tests that route calculation works correctly.
 
 **Test Flow**:
 - Calls `calculateRoute` with standard parameters
@@ -34,7 +34,7 @@ The ExternalRoutingEngine component handles external routing calculations, netwo
 
 ### 2. Operational Principle (Happy Path): getAlternativeRoutes
 
-**Purpose**: Validates alternative route generation.
+**Purpose**: Tests that the system can generate alternative routes.
 
 **Test Flow**:
 - Calls `getAlternativeRoutes` to get multiple route options

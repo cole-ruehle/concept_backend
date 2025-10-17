@@ -2,7 +2,7 @@
 
 ## Overview
 
-The ConstraintMonitor component is responsible for monitoring various constraints that could affect hiking safety and experience, including weather conditions, transit schedules, trail conditions, and daylight availability. The test suite validates both the happy path functionality and various alert scenarios.
+The ConstraintMonitor tests check that the system can monitor weather, transit schedules, trail conditions, and daylight to keep hikers safe. I tested both normal operation and various alert scenarios.
 
 ## Test Execution Summary
 
@@ -14,7 +14,7 @@ The ConstraintMonitor component is responsible for monitoring various constraint
 
 ### 1. Operational Principle: Happy Path
 
-**Purpose**: Validates the core functionality of the ConstraintMonitor when all conditions are favorable.
+**Purpose**: Tests that everything works when conditions are good.
 
 **Test Flow**:
 1. Updates transit schedules for a test source
@@ -32,7 +32,7 @@ The ConstraintMonitor component is responsible for monitoring various constraint
 
 ### 2. Scenario: Severe Weather Alert
 
-**Purpose**: Tests the system's ability to detect and alert on severe weather conditions.
+**Purpose**: Tests that the system can detect bad weather and warn users.
 
 **Test Setup**: Injected weather provider with high wind and precipitation
 
@@ -46,7 +46,7 @@ The ConstraintMonitor component is responsible for monitoring various constraint
 
 ### 3. Scenario: Transit Headway Alert
 
-**Purpose**: Validates detection of infrequent transit service that could impact hiking plans.
+**Purpose**: Tests that the system can detect when transit service is infrequent.
 
 **Test Setup**: Route uses transit stop 'stop-north' with >45min headway
 
