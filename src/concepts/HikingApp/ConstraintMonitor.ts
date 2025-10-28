@@ -549,3 +549,5 @@ export class ConstraintMonitorConcept {
     return date.getUTCHours() >= sunsetHourUTC;
   }
 }
+
+export default ConstraintMonitorConcept;

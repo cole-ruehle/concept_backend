@@ -5,6 +5,7 @@ import {
   Filter,
 } from "npm:mongodb";
 import { load } from "https://deno.land/std@0.224.0/dotenv/mod.ts";
+import { UserProfileConcept, UserProfile, UserFeedback } from "./UserProfile.ts";
 
 // --- Custom Errors ---
 class BaseError extends Error {
@@ -410,4 +411,332 @@ export class DynamicExitPlannerConcept {
       scoring: strategy.scoring,
     };
   }
+
+  // AI-Enhanced Methods
+
+  /**
+   * Get personalized exit strategies based on user profile
+   */
+  async getPersonalizedExitStrategies(
+    activeHikeId: string,
+    userId: string
+  ): Promise<{
+    strategies: any[];
+    personalizedRecommendations: string[];
+    riskAssessment: string;
+  }> {
+    const hike = await this.activeHikes.findOne({ _id: activeHikeId });
+    if (!hike) {
+      throw new NotFoundError(`ActiveHike with id ${activeHikeId} not found.`);
+    }
+
+    // Get user profile for personalization
+    const userProfileManager = new UserProfileConcept(this.db);
+    const userProfile = await userProfileManager.getProfile(userId);
+    
+    // Get basic exit strategies
+    const strategies = await this.getExitStrategies(activeHikeId);
+    
+    // Personalize based on user profile
+    const personalizedRecommendations: string[] = [];
+    const riskAssessment = userProfile ? this.assessPersonalizedRisk(userProfile, hike) : 'medium';
+
+    if (userProfile) {
+      if (userProfile.riskTolerance === 'conservative') {
+        personalizedRecommendations.push("Consider taking the safest, most accessible exit route");
+        personalizedRecommendations.push("Avoid challenging terrain if weather conditions are poor");
+      } else if (userProfile.riskTolerance === 'adventurous') {
+        personalizedRecommendations.push("You can handle more challenging exit routes");
+        personalizedRecommendations.push("Consider scenic exit options if time permits");
+      }
+
+      if (userProfile.weatherSensitivity === 'high') {
+        personalizedRecommendations.push("Monitor weather conditions closely");
+        personalizedRecommendations.push("Have a backup exit plan ready");
+      }
+
+      if (userProfile.hikingExperience === 'beginner') {
+        personalizedRecommendations.push("Choose well-marked exit routes");
+        personalizedRecommendations.push("Consider shorter exit distances");
+      }
+    }
+
+    return {
+      strategies,
+      personalizedRecommendations,
+      riskAssessment
+    };
+  }
+
+  /**
+   * Submit feedback about exit strategy effectiveness
+   */
+  async submitExitStrategyFeedback(
+    activeHikeId: string,
+    exitStrategyId: string,
+    feedback: {
+      satisfaction: number;
+      accuracy: number;
+      helpfulness: number;
+      comments: string;
+    }
+  ): Promise<string> {
+    const hike = await this.activeHikes.findOne({ _id: activeHikeId });
+    if (!hike) {
+      throw new NotFoundError(`ActiveHike with id ${activeHikeId} not found.`);
+    }
+
+    const userProfileManager = new UserProfileConcept(this.db);
+    const feedbackData: Omit<UserFeedback, 'id' | 'createdAt'> = {
+      hikeId: activeHikeId,
+      exitStrategyId,
+      satisfaction: feedback.satisfaction,
+      accuracy: feedback.accuracy,
+      helpfulness: feedback.helpfulness,
+      comments: feedback.comments
+    };
+
+    return await userProfileManager.submitFeedback(feedbackData);
+  }
+
+  /**
+   * Get contextual guidance based on current hike state
+   */
+  async getContextualGuidance(
+    activeHikeId: string,
+    userQuery: string
+  ): Promise<{
+    guidance: string;
+    recommendations: string[];
+    safetyTips: string[];
+  }> {
+    const hike = await this.activeHikes.findOne({ _id: activeHikeId });
+    if (!hike) {
+      throw new NotFoundError(`ActiveHike with id ${activeHikeId} not found.`);
+    }
+
+    const userProfileManager = new UserProfileConcept(this.db);
+    const userProfile = await userProfileManager.getProfile(hike.userId);
+
+    // Generate contextual guidance based on hike state and user profile
+    const guidance = this.generateContextualGuidance(hike, userQuery, userProfile);
+    const recommendations = this.generateRecommendations(hike, userProfile);
+    const safetyTips = this.generateSafetyTips(hike, userProfile);
+
+    return {
+      guidance,
+      recommendations,
+      safetyTips
+    };
+  }
+
+  /**
+   * Analyze user state during hike
+   */
+  async analyzeUserState(
+    activeHikeId: string,
+    sensorData: {
+      heartRate?: number;
+      pace?: number;
+      energyLevel?: number;
+      perceivedExertion?: number;
+    }
+  ): Promise<{
+    physicalState: {
+      fatigue: number;
+      energy: number;
+      pace: number;
+    };
+    mentalState: {
+      confidence: number;
+      stress: number;
+      motivation: number;
+    };
+    recommendations: string[];
+  }> {
+    const hike = await this.activeHikes.findOne({ _id: activeHikeId });
+    if (!hike) {
+      throw new NotFoundError(`ActiveHike with id ${activeHikeId} not found.`);
+    }
+
+    const userProfileManager = new UserProfileConcept(this.db);
+    const userProfile = await userProfileManager.getProfile(hike.userId);
+
+    // Analyze physical state
+    const physicalState = {
+      fatigue: this.calculateFatigue(hike, sensorData),
+      energy: sensorData.energyLevel || 7,
+      pace: sensorData.pace || 2.5
+    };
+
+    // Analyze mental state
+    const mentalState = {
+      confidence: this.calculateConfidence(hike, userProfile),
+      stress: this.calculateStress(hike, sensorData),
+      motivation: this.calculateMotivation(hike, userProfile)
+    };
+
+    // Generate recommendations
+    const recommendations = this.generateStateBasedRecommendations(
+      physicalState,
+      mentalState,
+      userProfile
+    );
+
+    return {
+      physicalState,
+      mentalState,
+      recommendations
+    };
+  }
+
+  // Helper methods for AI features
+  private assessPersonalizedRisk(userProfile: UserProfile, hike: any): string {
+    let riskLevel = 'medium';
+
+    if (userProfile.riskTolerance === 'conservative') {
+      riskLevel = 'low';
+    } else if (userProfile.riskTolerance === 'adventurous') {
+      riskLevel = 'high';
+    }
+
+    // Adjust based on hiking experience
+    if (userProfile.hikingExperience === 'beginner') {
+      if (riskLevel === 'high') riskLevel = 'medium';
+    } else if (userProfile.hikingExperience === 'expert') {
+      if (riskLevel === 'low') riskLevel = 'medium';
+    }
+
+    return riskLevel;
+  }
+
+  private generateContextualGuidance(hike: any, userQuery: string, userProfile: UserProfile | null): string {
+    const elapsedTime = (Date.now() - new Date(hike.startedAtIso).getTime()) / (1000 * 60 * 60);
+    
+    let guidance = `Based on your ${elapsedTime.toFixed(1)} hour hike, `;
+    
+    if (userQuery.toLowerCase().includes('tired') || userQuery.toLowerCase().includes('fatigue')) {
+      guidance += "consider taking a break and choosing a shorter exit route. ";
+    } else if (userQuery.toLowerCase().includes('weather')) {
+      guidance += "monitor weather conditions and have a backup plan ready. ";
+    } else if (userQuery.toLowerCase().includes('lost') || userQuery.toLowerCase().includes('direction')) {
+      guidance += "stay calm and use your exit strategies to find the nearest safe point. ";
+    } else {
+      guidance += "you're doing well! Continue monitoring your energy levels. ";
+    }
+
+    if (userProfile?.riskTolerance === 'conservative') {
+      guidance += "As a conservative hiker, prioritize safety over distance.";
+    }
+
+    return guidance;
+  }
+
+  private generateRecommendations(hike: any, userProfile: UserProfile | null): string[] {
+    const recommendations: string[] = [];
+    const elapsedTime = (Date.now() - new Date(hike.startedAtIso).getTime()) / (1000 * 60 * 60);
+
+    if (elapsedTime > 4) {
+      recommendations.push("Consider taking a break if you're feeling fatigued");
+    }
+
+    if (userProfile?.weatherSensitivity === 'high') {
+      recommendations.push("Check weather forecast for the next few hours");
+    }
+
+    if (userProfile?.hikingExperience === 'beginner') {
+      recommendations.push("Choose well-marked exit routes");
+    }
+
+    return recommendations;
+  }
+
+  private generateSafetyTips(hike: any, userProfile: UserProfile | null): string[] {
+    const tips: string[] = [
+      "Stay hydrated and take breaks as needed",
+      "Let someone know your planned exit route",
+      "Carry a map and compass as backup"
+    ];
+
+    if (userProfile?.riskTolerance === 'adventurous') {
+      tips.push("Even experienced hikers should have backup plans");
+    }
+
+    return tips;
+  }
+
+  private calculateFatigue(hike: any, sensorData: any): number {
+    const elapsedTime = (Date.now() - new Date(hike.startedAtIso).getTime()) / (1000 * 60 * 60);
+    let fatigue = Math.min(elapsedTime / 6, 1) * 10; // Scale 0-10
+
+    if (sensorData.perceivedExertion) {
+      fatigue = Math.max(fatigue, sensorData.perceivedExertion);
+    }
+
+    return Math.round(fatigue);
+  }
+
+  private calculateConfidence(hike: any, userProfile: UserProfile | null): number {
+    let confidence = 7; // Base confidence
+
+    if (userProfile?.hikingExperience === 'expert') {
+      confidence = 9;
+    } else if (userProfile?.hikingExperience === 'advanced') {
+      confidence = 8;
+    } else if (userProfile?.hikingExperience === 'beginner') {
+      confidence = 5;
+    }
+
+    return confidence;
+  }
+
+  private calculateStress(hike: any, sensorData: any): number {
+    let stress = 3; // Base stress level
+
+    if (sensorData.heartRate && sensorData.heartRate > 120) {
+      stress += 2;
+    }
+
+    return Math.min(stress, 10);
+  }
+
+  private calculateMotivation(hike: any, userProfile: UserProfile | null): number {
+    let motivation = 8; // Base motivation
+
+    if (userProfile?.riskTolerance === 'adventurous') {
+      motivation = 9;
+    } else if (userProfile?.riskTolerance === 'conservative') {
+      motivation = 7;
+    }
+
+    return motivation;
+  }
+
+  private generateStateBasedRecommendations(
+    physicalState: any,
+    mentalState: any,
+    userProfile: UserProfile | null
+  ): string[] {
+    const recommendations: string[] = [];
+
+    if (physicalState.fatigue > 7) {
+      recommendations.push("Consider taking a longer break or choosing a shorter exit route");
+    }
+
+    if (mentalState.stress > 6) {
+      recommendations.push("Take deep breaths and focus on your breathing");
+    }
+
+    if (mentalState.confidence < 5) {
+      recommendations.push("Choose the safest, most straightforward exit route");
+    }
+
+    if (userProfile?.weatherSensitivity === 'high') {
+      recommendations.push("Monitor weather conditions closely");
+    }
+
+    return recommendations;
+  }
 }
+
+export default DynamicExitPlannerConcept;

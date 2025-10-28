@@ -5,6 +5,9 @@ import {
   ObjectId,
 } from "npm:mongodb";
 import { load } from "https://deno.land/std@0.224.0/dotenv/mod.ts";
+import { GeoPoint, RouteSegment, RouteCacheDoc } from "../../utils/mappingTypes.ts";
+import { getMappingCollections } from "../../utils/database.ts";
+import OSMService from "../../services/OSMService.ts";
 
 // =============================================================================
 // 1. CUSTOM ERROR CLASSES
@@ -261,13 +264,19 @@ export class ExternalRoutingEngine {
   private results: Collection<RoutingResultDoc>;
   private networkData: Collection<NetworkDataDoc>;
   private provider: RoutingProvider;
+  private osmService: OSMService;
+  private routeCache: any;
 
   private constructor(db: Db, provider: RoutingProvider) {
     this.db = db;
     this.provider = provider;
+    this.osmService = new OSMService();
     this.requests = db.collection<RoutingRequestDoc>("routingRequests");
     this.results = db.collection<RoutingResultDoc>("routingResults");
     this.networkData = db.collection<NetworkDataDoc>("networkData");
+    
+    const collections = getMappingCollections(db);
+    this.routeCache = collections.routeCache;
   }
 
   /**
@@ -408,7 +417,7 @@ export class ExternalRoutingEngine {
     }));
 
     const resultInsertResult = await this.results.insertMany(resultDocs as RoutingResultDoc[]);
-    const insertedIds = Object.values(resultInsertResult.insertedIds).map(id => id.toHexString());
+    const insertedIds = Object.values(resultInsertResult.insertedIds).map((id: any) => id.toHexString());
 
     return insertedIds;
   }
@@ -556,4 +565,449 @@ export class ExternalRoutingEngine {
     
     throw new NotFoundError(`No polyline or GeoJSON available for route ${id}.`);
   }
+
+  // =============================================================================
+  // NEW OSM-BASED ROUTING METHODS
+  // =============================================================================
+
+  /**
+   * Calculate hiking route using OSM data
+   */
+  async calculateHikingRoute(
+    origin: GeoPoint,
+    destination: GeoPoint,
+    preferences?: {
+      avoidHighways?: boolean;
+      preferTrails?: boolean;
+      maxDistance?: number;
+      difficulty?: string;
+    }
+  ): Promise<RouteSegment[]> {
+    const routeHash = this.generateRouteHash(origin, destination, 'hiking', preferences);
+    
+    // Check cache first
+    const cached = await this.routeCache.findOne({ route_hash: routeHash });
+    if (cached && cached.expires_at > new Date()) {
+      return cached.data;
+    }
+
+    try {
+      // Find trails near origin and destination
+      const originTrails = await this.osmService.findTrails(origin, 2);
+      const destTrails = await this.osmService.findTrails(destination, 2);
+      
+      // Find trailheads
+      const originTrailheads = await this.osmService.findTrailheads(origin, 5);
+      const destTrailheads = await this.osmService.findTrailheads(destination, 5);
+      
+      // Create route segments
+      const segments: RouteSegment[] = [];
+      
+      // Add approach to trail
+      if (originTrails.length > 0) {
+        const nearestTrail = this.findNearestTrail(origin, originTrails);
+        segments.push(this.createApproachSegment(origin, nearestTrail.coordinates[0]));
+        segments.push(this.createTrailSegment(nearestTrail));
+      } else if (originTrailheads.length > 0) {
+        const nearestTrailhead = this.findNearestTrailhead(origin, originTrailheads);
+        segments.push(this.createApproachSegment(origin, nearestTrailhead.location));
+      }
+      
+      // Add destination approach
+      if (destTrails.length > 0) {
+        const nearestDestTrail = this.findNearestTrail(destination, destTrails);
+        segments.push(this.createApproachSegment(nearestDestTrail.coordinates[0], destination));
+      } else if (destTrailheads.length > 0) {
+        const nearestDestTrailhead = this.findNearestTrailhead(destination, destTrailheads);
+        segments.push(this.createApproachSegment(nearestDestTrailhead.location, destination));
+      }
+      
+      // Cache the result
+      const cacheDoc: Omit<RouteCacheDoc, '_id'> = {
+        route_hash: routeHash,
+        data: segments,
+        cached_at: new Date(),
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+        origin,
+        destination,
+        mode: 'hiking'
+      };
+      
+      await this.routeCache.replaceOne(
+        { route_hash: routeHash },
+        cacheDoc,
+        { upsert: true }
+      );
+      
+      return segments;
+    } catch (error) {
+      console.error('Hiking route calculation error:', error);
+      throw new ExternalServiceError(`Failed to calculate hiking route: ${error.message}`);
+    }
+  }
+
+  /**
+   * Calculate multi-modal route (transit + hiking)
+   */
+  async calculateMultiModalRoute(
+    origin: GeoPoint,
+    destination: GeoPoint,
+    options?: {
+      maxTransitTime?: number;
+      preferDirectRoutes?: boolean;
+      avoidTransfers?: boolean;
+    }
+  ): Promise<RouteSegment[]> {
+    const routeHash = this.generateRouteHash(origin, destination, 'multimodal', options);
+    
+    // Check cache first
+    const cached = await this.routeCache.findOne({ route_hash: routeHash });
+    if (cached && cached.expires_at > new Date()) {
+      return cached.data;
+    }
+
+    try {
+      const segments: RouteSegment[] = [];
+      
+      // Find transit stops near origin and destination
+      const originStops = await this.osmService.findTransitStops(origin, 1);
+      const destStops = await this.osmService.findTransitStops(destination, 1);
+      
+      if (originStops.length > 0 && destStops.length > 0) {
+        // Add walking to transit
+        const nearestOriginStop = this.findNearestTransitStop(origin, originStops);
+        segments.push(this.createWalkingSegment(origin, nearestOriginStop.location, 'Walk to transit'));
+        
+        // Add transit segment (simplified - would need real transit routing)
+        segments.push(this.createTransitSegment(nearestOriginStop, destStops[0]));
+        
+        // Add walking from transit to destination
+        const nearestDestStop = this.findNearestTransitStop(destination, destStops);
+        segments.push(this.createWalkingSegment(nearestDestStop.location, destination, 'Walk to destination'));
+      } else {
+        // Fallback to direct walking route
+        segments.push(this.createWalkingSegment(origin, destination, 'Direct walking route'));
+      }
+      
+      // Cache the result
+      const cacheDoc: Omit<RouteCacheDoc, '_id'> = {
+        route_hash: routeHash,
+        data: segments,
+        cached_at: new Date(),
+        expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours
+        origin,
+        destination,
+        mode: 'multimodal'
+      };
+      
+      await this.routeCache.replaceOne(
+        { route_hash: routeHash },
+        cacheDoc,
+        { upsert: true }
+      );
+      
+      return segments;
+    } catch (error) {
+      console.error('Multi-modal route calculation error:', error);
+      throw new ExternalServiceError(`Failed to calculate multi-modal route: ${error.message}`);
+    }
+  }
+
+  /**
+   * Find nearby trails and trailheads
+   */
+  async findNearbyTrails(
+    center: GeoPoint,
+    radiusKm: number = 10
+  ): Promise<{ trails: any[], trailheads: any[] }> {
+    const [trails, trailheads] = await Promise.all([
+      this.osmService.findTrails(center, radiusKm),
+      this.osmService.findTrailheads(center, radiusKm)
+    ]);
+    
+    return { trails, trailheads };
+  }
+
+  /**
+   * Get route alternatives using different criteria
+   */
+  async getRouteAlternatives(
+    origin: GeoPoint,
+    destination: GeoPoint,
+    criteria: 'fastest' | 'shortest' | 'scenic' | 'easiest'
+  ): Promise<RouteSegment[][]> {
+    const alternatives: RouteSegment[][] = [];
+    
+    try {
+      // Calculate different route options based on criteria
+      switch (criteria) {
+        case 'fastest':
+          alternatives.push(await this.calculateHikingRoute(origin, destination, { avoidHighways: true }));
+          break;
+        case 'shortest':
+          alternatives.push(await this.calculateHikingRoute(origin, destination, { maxDistance: 5000 }));
+          break;
+        case 'scenic':
+          alternatives.push(await this.calculateHikingRoute(origin, destination, { preferTrails: true }));
+          break;
+        case 'easiest':
+          alternatives.push(await this.calculateHikingRoute(origin, destination, { difficulty: 'easy' }));
+          break;
+      }
+      
+      return alternatives;
+    } catch (error) {
+      console.error('Route alternatives error:', error);
+      return [];
+    }
+  }
+
+  // Private helper methods for OSM routing
+
+  private generateRouteHash(
+    origin: GeoPoint, 
+    destination: GeoPoint, 
+    mode: string, 
+    options?: any
+  ): string {
+    const optionsStr = options ? JSON.stringify(options) : '';
+    const hashString = `${origin.lat},${origin.lon}:${destination.lat},${destination.lon}:${mode}:${optionsStr}`;
+    return btoa(hashString);
+  }
+
+  private findNearestTrail(center: GeoPoint, trails: any[]): any {
+    let nearest = trails[0];
+    let minDistance = this.calculateDistance(center, nearest.coordinates[0]);
+    
+    for (const trail of trails) {
+      const distance = this.calculateDistance(center, trail.coordinates[0]);
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearest = trail;
+      }
+    }
+    
+    return nearest;
+  }
+
+  private findNearestTrailhead(center: GeoPoint, trailheads: any[]): any {
+    let nearest = trailheads[0];
+    let minDistance = this.calculateDistance(center, nearest.location);
+    
+    for (const trailhead of trailheads) {
+      const distance = this.calculateDistance(center, trailhead.location);
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearest = trailhead;
+      }
+    }
+    
+    return nearest;
+  }
+
+  private findNearestTransitStop(center: GeoPoint, stops: any[]): any {
+    let nearest = stops[0];
+    let minDistance = this.calculateDistance(center, nearest.location);
+    
+    for (const stop of stops) {
+      const distance = this.calculateDistance(center, stop.location);
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearest = stop;
+      }
+    }
+    
+    return nearest;
+  }
+
+  private createApproachSegment(from: GeoPoint, to: GeoPoint): RouteSegment {
+    return {
+      from,
+      to,
+      distance: this.calculateDistance(from, to),
+      duration: this.calculateWalkingTime(from, to),
+      instructions: [`Walk from ${this.formatCoordinates(from)} to ${this.formatCoordinates(to)}`],
+      surface: 'pavement',
+      difficulty: 'easy',
+      elevation_gain: 0,
+      waypoints: [from, to]
+    };
+  }
+
+  private createTrailSegment(trail: any): RouteSegment {
+    const coordinates = trail.coordinates || [];
+    if (coordinates.length < 2) {
+      throw new Error('Trail must have at least 2 coordinates');
+    }
+    
+    return {
+      from: coordinates[0],
+      to: coordinates[coordinates.length - 1],
+      distance: trail.length || this.calculateTrailLength(coordinates),
+      duration: this.calculateTrailDuration(trail),
+      instructions: [`Follow ${trail.name} trail`],
+      surface: trail.surface || 'dirt',
+      difficulty: trail.difficulty || 'moderate',
+      elevation_gain: trail.elevation_gain || 0,
+      waypoints: coordinates
+    };
+  }
+
+  private createWalkingSegment(from: GeoPoint, to: GeoPoint, instruction: string): RouteSegment {
+    return {
+      from,
+      to,
+      distance: this.calculateDistance(from, to),
+      duration: this.calculateWalkingTime(from, to),
+      instructions: [instruction],
+      surface: 'pavement',
+      difficulty: 'easy',
+      elevation_gain: 0,
+      waypoints: [from, to]
+    };
+  }
+
+  private createTransitSegment(fromStop: any, toStop: any): RouteSegment {
+    return {
+      from: fromStop.location,
+      to: toStop.location,
+      distance: this.calculateDistance(fromStop.location, toStop.location),
+      duration: this.calculateTransitTime(fromStop.location, toStop.location),
+      instructions: [`Take transit from ${fromStop.name} to ${toStop.name}`],
+      surface: 'transit',
+      difficulty: 'easy',
+      elevation_gain: 0,
+      waypoints: [fromStop.location, toStop.location]
+    };
+  }
+
+  private calculateDistance(point1: GeoPoint, point2: GeoPoint): number {
+    const R = 6371000; // Earth's radius in meters
+    const dLat = (point2.lat - point1.lat) * Math.PI / 180;
+    const dLon = (point2.lon - point1.lon) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(point1.lat * Math.PI / 180) * Math.cos(point2.lat * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  }
+
+  private calculateWalkingTime(from: GeoPoint, to: GeoPoint): number {
+    const distance = this.calculateDistance(from, to);
+    const walkingSpeed = 1.4; // m/s (5 km/h)
+    return Math.round(distance / walkingSpeed);
+  }
+
+  private calculateTransitTime(from: GeoPoint, to: GeoPoint): number {
+    const distance = this.calculateDistance(from, to);
+    const transitSpeed = 8.3; // m/s (30 km/h average)
+    return Math.round(distance / transitSpeed);
+  }
+
+  private calculateTrailLength(coordinates: GeoPoint[]): number {
+    let total = 0;
+    for (let i = 1; i < coordinates.length; i++) {
+      total += this.calculateDistance(coordinates[i-1], coordinates[i]);
+    }
+    return total;
+  }
+
+  private calculateTrailDuration(trail: any): number {
+    const distance = trail.length || 0;
+    const hikingSpeed = 1.0; // m/s (3.6 km/h average hiking speed)
+    return Math.round(distance / hikingSpeed);
+  }
+
+  private formatCoordinates(point: GeoPoint): string {
+    return `${point.lat.toFixed(4)}, ${point.lon.toFixed(4)}`;
+  }
 }
+
+// Concept wrapper for the concept server
+export class ExternalRoutingEngineConcept {
+  private engine: ExternalRoutingEngine;
+
+  constructor(private db: Db) {
+    // Create a default provider for the concept
+    const defaultProvider = new DefaultRoutingProvider({
+      type: "valhalla",
+      baseUrl: "http://localhost:8002",
+      apiKey: undefined,
+    });
+    this.engine = ExternalRoutingEngine.createWithDb(db, defaultProvider);
+  }
+
+  async calculateRoute(origin: any, destination: any, mode: string, constraints: any) {
+    // Validate inputs
+    if (!origin || !destination) {
+      throw new Error("Origin and destination are required");
+    }
+    
+    const originLat = origin.latitude || origin.lat;
+    const originLon = origin.longitude || origin.lon;
+    const destLat = destination.latitude || destination.lat;
+    const destLon = destination.longitude || destination.lon;
+    
+    if (!originLat || !originLon || !destLat || !destLon) {
+      throw new Error("Valid coordinates are required for origin and destination");
+    }
+    
+    return await this.engine.calculateRoute(
+      originLat,
+      originLon,
+      destLat,
+      destLon,
+      mode as any,
+      constraints ? JSON.stringify(constraints) : undefined
+    );
+  }
+
+  async getAlternativeRoutes(origin: any, destination: any, mode: string, maxAlternatives: number) {
+    return await this.engine.getAlternativeRoutes(
+      origin.latitude || origin.lat,
+      origin.longitude || origin.lon,
+      destination.latitude || destination.lat,
+      destination.longitude || destination.lon,
+      mode as any,
+      maxAlternatives
+    );
+  }
+
+  async updateNetworkData() {
+    return await this.engine.updateNetworkData();
+  }
+
+  // New OSM-based methods
+  async calculateHikingRoute(origin: any, destination: any, preferences?: any) {
+    return await this.engine.calculateHikingRoute(
+      { lat: origin.latitude || origin.lat, lon: origin.longitude || origin.lon },
+      { lat: destination.latitude || destination.lat, lon: destination.longitude || destination.lon },
+      preferences
+    );
+  }
+
+  async calculateMultiModalRoute(origin: any, destination: any, options?: any) {
+    return await this.engine.calculateMultiModalRoute(
+      { lat: origin.latitude || origin.lat, lon: origin.longitude || origin.lon },
+      { lat: destination.latitude || destination.lat, lon: destination.longitude || destination.lon },
+      options
+    );
+  }
+
+  async findNearbyTrails(center: any, radiusKm?: number) {
+    return await this.engine.findNearbyTrails(
+      { lat: center.latitude || center.lat, lon: center.longitude || center.lon },
+      radiusKm
+    );
+  }
+
+  async getRouteAlternatives(origin: any, destination: any, criteria: string) {
+    return await this.engine.getRouteAlternatives(
+      { lat: origin.latitude || origin.lat, lon: origin.longitude || origin.lon },
+      { lat: destination.latitude || destination.lat, lon: destination.longitude || destination.lon },
+      criteria as any
+    );
+  }
+}
+
+export default ExternalRoutingEngineConcept;

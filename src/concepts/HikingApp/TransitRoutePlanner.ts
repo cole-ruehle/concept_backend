@@ -475,3 +475,5 @@ export class TransitRoutePlannerConcept {
     }
   }
 }
+
+export default TransitRoutePlannerConcept;
