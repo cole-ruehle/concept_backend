@@ -965,3 +965,5 @@ The API supports CORS for frontend integration:
 This enhanced API provides comprehensive mapping functionality with real OpenStreetMap integration, enabling rich hiking route planning and visualization features for your frontend application.
 
 
+
+

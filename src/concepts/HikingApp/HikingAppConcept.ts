@@ -393,9 +393,150 @@ export class HikingAppConcept {
 
   /**
    * Search for locations with autocomplete
+   * Returns locations enriched with route information for navigation
    */
-  async searchLocations(query: string, options: any = {}) {
-    return await this.unifiedRouting.searchLocations(query, options.limit || 10);
+  async searchLocations(requestOrQuery: any, options?: any) {
+    // Handle both direct calls and API calls via concept server
+    let query: string;
+    let limit: number;
+    
+    if (typeof requestOrQuery === 'string') {
+      // Direct call with string query
+      query = requestOrQuery;
+      limit = options?.limit || 10;
+    } else if (requestOrQuery && typeof requestOrQuery === 'object') {
+      // API call with request body object
+      query = requestOrQuery.query;
+      limit = requestOrQuery.options?.limit || requestOrQuery.limit || 10;
+    } else {
+      throw new Error("Invalid search request: query must be a string or request object");
+    }
+    
+    // Validate query
+    if (!query || typeof query !== 'string') {
+      throw new Error("Search query is required and must be a string");
+    }
+    
+    // Get location results
+    const locations = await this.unifiedRouting.searchLocations(query, limit);
+    
+    // Enrich locations with route-ready coordinate segments for navigation
+    return await Promise.all(locations.map(async (location: any) => {
+      // Create a route segment from the location
+      // This makes the location "navigation-ready" by providing start/end coordinates
+      const coords = location.location;
+      
+      // For trails, try to fetch actual trail geometry from database
+      let trailCoordinates = [
+        { lat: coords.lat, lon: coords.lon }
+      ];
+      
+      let distance = 0;
+      let duration = 0;
+      
+      if (location.type === "trail") {
+        // Fetch trail details from database to get actual geometry
+        const trail = await this.db.collection("trails").findOne({ _id: location.id });
+        
+        if (trail && trail.geometry && trail.geometry.type === "LineString") {
+          // Convert LineString coordinates to lat/lon array
+          trailCoordinates = trail.geometry.coordinates.map((coord: number[]) => ({
+            lat: coord[1],
+            lon: coord[0]
+          }));
+          
+          // Calculate approximate distance (in meters) and duration (in seconds)
+          distance = trail.length_meters || this.calculateDistance(trailCoordinates);
+          duration = Math.round(distance / 1.4); // ~1.4 m/s walking speed
+        } else {
+          // Create a simple 1km loop as fallback
+          const offset = 0.005; // roughly 500m in degrees
+          trailCoordinates = [
+            { lat: coords.lat, lon: coords.lon },
+            { lat: coords.lat + offset, lon: coords.lon + offset },
+            { lat: coords.lat + offset, lon: coords.lon },
+            { lat: coords.lat, lon: coords.lon }
+          ];
+          distance = 1000; // 1km
+          duration = 720; // 12 minutes
+        }
+      } else {
+        // For trailheads and other locations, create a simple point-to-point route
+        // Add a second point slightly offset to make it a valid route
+        const offset = 0.001; // roughly 100m
+        trailCoordinates = [
+          { lat: coords.lat, lon: coords.lon },
+          { lat: coords.lat + offset, lon: coords.lon + offset }
+        ];
+        distance = 100; // 100m
+        duration = 72; // ~1 minute
+      }
+      
+      // Ensure we have at least 2 coordinates (start and end)
+      if (trailCoordinates.length < 2) {
+        const offset = 0.001;
+        trailCoordinates.push({
+          lat: coords.lat + offset,
+          lon: coords.lon + offset
+        });
+      }
+      
+      return {
+        ...location,
+        // Add route-specific fields needed by frontend
+        coordinates: trailCoordinates,
+        segments: [
+          {
+            type: location.type,
+            from: trailCoordinates[0],
+            to: trailCoordinates[trailCoordinates.length - 1],
+            distance,
+            duration,
+            mode: "hiking",
+            instructions: [
+              `Start at ${location.name}`,
+              `Follow trail for ${(distance / 1000).toFixed(1)} km`,
+              `End at ${location.name}`
+            ],
+            coordinates: trailCoordinates
+          }
+        ],
+        // Route metadata
+        startLocation: trailCoordinates[0],
+        endLocation: trailCoordinates[trailCoordinates.length - 1],
+        distance,
+        duration,
+        difficulty: location.type === "trail" ? "moderate" : "easy"
+      };
+    }));
+  }
+
+  /**
+   * Calculate distance between coordinates using Haversine formula
+   */
+  private calculateDistance(coordinates: { lat: number; lon: number }[]): number {
+    if (coordinates.length < 2) return 0;
+    
+    let totalDistance = 0;
+    for (let i = 0; i < coordinates.length - 1; i++) {
+      const from = coordinates[i];
+      const to = coordinates[i + 1];
+      
+      const R = 6371000; // Earth's radius in meters
+      const φ1 = from.lat * Math.PI / 180;
+      const φ2 = to.lat * Math.PI / 180;
+      const Δφ = (to.lat - from.lat) * Math.PI / 180;
+      const Δλ = (to.lon - from.lon) * Math.PI / 180;
+      
+      const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      
+      totalDistance += R * c;
+    }
+    
+    return totalDistance;
   }
 
   /**
@@ -415,15 +556,53 @@ export class HikingAppConcept {
   /**
    * Reverse geocode coordinates to location (uses location search)
    */
-  async reverseGeocodeLocation(lat: number, lon: number) {
-    return await this.locationSearch.reverseGeocode(lat, lon);
+  async reverseGeocodeLocation(requestOrLat: any, lon?: number) {
+    // Handle both direct calls and API calls via concept server
+    let lat: number;
+    let longitude: number;
+    
+    if (typeof requestOrLat === 'number') {
+      // Direct call with numbers
+      lat = requestOrLat;
+      longitude = lon!;
+    } else if (requestOrLat && typeof requestOrLat === 'object') {
+      // API call with request body object
+      lat = requestOrLat.lat;
+      longitude = requestOrLat.lon;
+    } else {
+      throw new Error("Invalid reverse geocode request");
+    }
+    
+    return await this.locationSearch.reverseGeocode(lat, longitude);
   }
 
   /**
    * Get nearby locations
    */
-  async getNearbyLocations(center: any, radius?: number, types?: string[], limit?: number) {
-    return await this.locationSearch.getNearbyLocations(center, radius, types, limit);
+  async getNearbyLocations(requestOrCenter: any, radius?: number, types?: string[], limit?: number) {
+    // Handle both direct calls and API calls via concept server
+    let center: { lat: number; lon: number };
+    let searchRadius: number;
+    let searchTypes: string[];
+    let searchLimit: number;
+    
+    if (requestOrCenter && requestOrCenter.center) {
+      // API call with request body object
+      center = requestOrCenter.center;
+      searchRadius = requestOrCenter.radius || 1000;
+      searchTypes = requestOrCenter.types || ["trailhead", "transit_stop"];
+      searchLimit = requestOrCenter.limit || 20;
+    } else if (requestOrCenter && requestOrCenter.lat !== undefined) {
+      // Direct call with center object
+      center = requestOrCenter;
+      searchRadius = radius || 1000;
+      searchTypes = types || ["trailhead", "transit_stop"];
+      searchLimit = limit || 20;
+    } else {
+      throw new Error("Invalid nearby locations request");
+    }
+    
+    return await this.locationSearch.getNearbyLocations(center, searchRadius, searchTypes, searchLimit);
   }
 
   /**
@@ -445,6 +624,220 @@ export class HikingAppConcept {
    */
   async clearSearchHistory(userId?: string, sessionId?: string) {
     return await this.searchHistory.clearHistory(userId, sessionId);
+  }
+
+  // =============================================================================
+  // NAVIGATION STATUS API
+  // =============================================================================
+
+  /**
+   * Start navigation for a route
+   * Initializes an active hike for navigation tracking
+   */
+  async startNavigation(request: {
+    routeId: string;
+    userId?: string;
+    startLocation: { lat: number; lon: number };
+  }) {
+    const { routeId, userId = "anonymous", startLocation } = request;
+    
+    // Start the hike using DynamicExitPlanner
+    const activeHikeId = await this.dynamicExitPlanner.startHike(
+      routeId,
+      userId,
+      startLocation.lat,
+      startLocation.lon
+    );
+    
+    return {
+      success: true,
+      activeHikeId,
+      status: "active",
+      startTime: new Date().toISOString(),
+      currentLocation: startLocation
+    };
+  }
+
+  /**
+   * Update navigation location
+   * Updates the current position during active navigation
+   */
+  async updateNavigationLocation(request: {
+    activeHikeId: string;
+    location: { lat: number; lon: number };
+  }) {
+    const { activeHikeId, location } = request;
+    
+    // Update location using DynamicExitPlanner
+    await this.dynamicExitPlanner.updateLocation(
+      activeHikeId,
+      location.lat,
+      location.lon
+    );
+    
+    // Get updated exit strategies
+    const exitStrategies = await this.dynamicExitPlanner.getExitStrategies(activeHikeId);
+    
+    return {
+      success: true,
+      currentLocation: location,
+      exitStrategiesAvailable: exitStrategies.length,
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  /**
+   * Get navigation status for a route
+   * Returns current navigation state and available exit options
+   */
+  async getNavigationStatus(request: {
+    routeId: string;
+    location?: { lat: number; lon: number };
+  }) {
+    const { routeId, location } = request;
+    
+    // Find active hike for this route
+    const activeHikes = await this.db.collection("active_hikes").find({
+      plannedRouteId: routeId,
+      status: "active"
+    }).toArray();
+    
+    if (activeHikes.length === 0) {
+      // No active hike, return basic status
+      return {
+        isNavigating: false,
+        routeId,
+        message: "No active navigation for this route"
+      };
+    }
+    
+    const activeHike = activeHikes[0];
+    
+    // Update location if provided
+    if (location) {
+      await this.dynamicExitPlanner.updateLocation(
+        activeHike._id,
+        location.lat,
+        location.lon
+      );
+    }
+    
+    // Get exit strategies
+    const exitStrategies = await this.dynamicExitPlanner.getExitStrategies(activeHike._id);
+    
+    return {
+      isNavigating: true,
+      activeHikeId: activeHike._id,
+      routeId: activeHike.plannedRouteId,
+      startTime: activeHike.startIso,
+      currentLocation: {
+        lat: activeHike.loc.coordinates[1],
+        lon: activeHike.loc.coordinates[0]
+      },
+      exitStrategies: exitStrategies.slice(0, 3), // Return top 3 strategies
+      lastUpdate: activeHike.lastUpdateIso
+    };
+  }
+
+  /**
+   * End navigation
+   * Completes an active hike
+   */
+  async endNavigation(request: {
+    activeHikeId: string;
+    exitPointId?: string;
+    location: { lat: number; lon: number };
+  }) {
+    const { activeHikeId, exitPointId, location } = request;
+    
+    // If no exit point specified, create a default one
+    let finalExitPointId = exitPointId;
+    
+    if (!finalExitPointId) {
+      // Find nearest exit point or use current location
+      const exitPoints = await this.db.collection("exit_points").find({
+        loc: {
+          $near: {
+            $geometry: { type: "Point", coordinates: [location.lon, location.lat] },
+            $maxDistance: 5000 // 5km
+          }
+        }
+      }).limit(1).toArray();
+      
+      if (exitPoints.length > 0) {
+        finalExitPointId = exitPoints[0]._id;
+      } else {
+        // Create a temporary exit point
+        finalExitPointId = "completed";
+      }
+    }
+    
+    // End the hike
+    const completedHikeId = await this.dynamicExitPlanner.endHike(
+      activeHikeId,
+      finalExitPointId
+    );
+    
+    return {
+      success: true,
+      completedHikeId,
+      endTime: new Date().toISOString(),
+      message: "Navigation completed successfully"
+    };
+  }
+
+  /**
+   * Get status updates
+   * Returns real-time updates for active navigation
+   */
+  async getStatusUpdates(request?: {
+    userId?: string;
+    activeHikeId?: string;
+  }) {
+    const { userId = "anonymous", activeHikeId } = request || {};
+    
+    // Build query
+    const query: any = { status: "active" };
+    if (userId) {
+      query.userId = userId;
+    }
+    if (activeHikeId) {
+      query._id = activeHikeId;
+    }
+    
+    // Get active hikes
+    const activeHikes = await this.db.collection("active_hikes")
+      .find(query)
+      .limit(10)
+      .toArray();
+    
+    // Get exit strategies for each active hike
+    const updates = await Promise.all(
+      activeHikes.map(async (hike: any) => {
+        const exitStrategies = await this.dynamicExitPlanner.getExitStrategies(hike._id);
+        
+        return {
+          activeHikeId: hike._id,
+          routeId: hike.plannedRouteId,
+          userId: hike.userId,
+          currentLocation: {
+            lat: hike.loc.coordinates[1],
+            lon: hike.loc.coordinates[0]
+          },
+          startTime: hike.startIso,
+          lastUpdate: hike.lastUpdateIso,
+          status: hike.status,
+          exitStrategiesCount: exitStrategies.length,
+          topExitStrategies: exitStrategies.slice(0, 2)
+        };
+      })
+    );
+    
+    return {
+      updates,
+      timestamp: new Date().toISOString(),
+      count: updates.length
+    };
   }
 }
 

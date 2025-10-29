@@ -162,6 +162,25 @@ export class LocationSearchConcept {
     types: string[] = ["trailhead", "trail", "transit_stop"],
     limit: number = 20
   ): Promise<LocationSearchResult[]> {
+    // Validate coordinates
+    if (!center || 
+        typeof center.lat !== 'number' || 
+        typeof center.lon !== 'number' ||
+        isNaN(center.lat) || 
+        isNaN(center.lon) ||
+        center.lat === null || 
+        center.lon === null) {
+      throw new Error("Invalid coordinates: lat and lon must be valid numbers");
+    }
+
+    // Validate coordinate ranges
+    if (center.lat < -90 || center.lat > 90) {
+      throw new Error("Invalid latitude: must be between -90 and 90");
+    }
+    if (center.lon < -180 || center.lon > 180) {
+      throw new Error("Invalid longitude: must be between -180 and 180");
+    }
+
     const results: LocationSearchResult[] = [];
 
     for (const type of types) {
@@ -171,8 +190,9 @@ export class LocationSearchConcept {
           collection = "trailheads";
           break;
         case "trail":
-          collection = "trails";
-          break;
+          // Skip trails - they don't have geospatial point data
+          // Trails are line segments, not points, so can't use $near query
+          continue;
         case "transit_stop":
           collection = "transit_stops";
           break;
@@ -459,4 +479,6 @@ export class LocationSearchConcept {
 }
 
 export default LocationSearchConcept;
+
+
 

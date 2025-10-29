@@ -192,3 +192,5 @@ If you still see CORS errors:
 4. Check the browser console for the exact CORS error message
 
 The hiking app backend is now fully functional and ready for frontend integration! 🏔️🥾
+
+

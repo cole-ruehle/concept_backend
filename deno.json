@@ -4,6 +4,9 @@
         "@utils/": "./src/utils/"
     },
     "tasks": {
+        "start": "deno run --allow-net --allow-read --allow-sys --allow-env src/orchestrate_server.ts",
+        "dev": "deno run --allow-net --allow-read --allow-sys --allow-env --watch src/orchestrate_server.ts",
+        "test": "deno run --allow-net src/scripts/testOrchestrate.ts",
         "concepts": "deno run --allow-net --allow-read --allow-sys --allow-env src/concept_server.ts --port 8000 --baseUrl /api"
     }
 }

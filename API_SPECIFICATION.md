@@ -16,6 +16,27 @@ Currently no authentication required. All endpoints accept anonymous requests.
 
 ---
 
+## ⚡ **Quick Test Guide**
+
+**Test the search endpoint immediately:**
+```bash
+# Search for Yosemite locations
+curl -X POST http://localhost:8000/HikingApp/searchLocations \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Yosemite", "options": {"limit": 5}}'
+
+# Search for Grand Canyon
+curl -X POST http://localhost:8000/HikingApp/searchLocations \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Grand Canyon", "options": {"limit": 5}}'
+```
+
+**Working search terms:** `"Yosemite"`, `"Grand Canyon"`, `"Rocky Mountain"`, `"Mount Rainier"`, `"Crater Lake"`, `"Zion"`, `"Half Dome"`, `"Denali"`, `"Everglades"`, etc.
+
+**Each search returns an array** with trailheads and trails that match your query.
+
+---
+
 ## 🗺️ **Route Planning API**
 
 ### 1. Calculate Route
@@ -132,53 +153,86 @@ interface RouteSegment {
 ### 3. Search Locations
 **Endpoint:** `POST /searchLocations`
 
-**Description:** Search for locations with autocomplete functionality.
+**Description:** Search for locations with autocomplete functionality. Searches the database for trailheads, trails, and transit stops using case-insensitive name matching.
+
+> **💡 How It Works:**
+> - Searches **110 trailheads**, **110 trails**, and **12 transit stops** in the MongoDB database
+> - Uses case-insensitive partial name matching (e.g., "yosemite" matches "Yosemite Valley Trailhead")
+> - Returns results from database collections, **not external APIs**
+> - Each trailhead and trail are stored separately, so you'll typically get 2 results per location
 
 **Request Body:**
 ```typescript
 {
-  query: string;                 // Search query
+  query: string;                 // Search query (required)
   options?: {
-    center?: { lat: number; lon: number };  // Search center
-    radius?: number;             // Search radius in meters (default: 50000)
-    types?: string[];            // Location types to search
     limit?: number;              // Max results (default: 10)
-    includeAddresses?: boolean;  // Include geocoded addresses (default: true)
   }
 }
 ```
 
 **Response:**
 ```typescript
-{
-  suggestions: LocationSearchResult[];
-  total: number;
-  hasMore: boolean;
-}
+LocationSearchResult[]
 
 interface LocationSearchResult {
-  id: string;
+  id: string;                    // MongoDB ObjectId as string
   name: string;
-  address: string;
+  address: string;               // State code for trailheads (e.g., "CA")
   location: { lat: number; lon: number };
-  type: "trailhead" | "trail" | "transit_stop" | "poi" | "address";
-  relevance: number;             // 0-1 relevance score
-  distance?: number;             // Distance in meters from search center
-  tags?: string[];               // Additional tags
+  type: "trailhead" | "trail" | "transit_stop";
 }
 ```
+
+**✅ Recommended Search Terms:**
+Use these proven search terms that work with your database:
+
+**Popular Locations:**
+- `"Yosemite"` - California (Yosemite Valley, Half Dome)
+- `"Grand Canyon"` - Arizona
+- `"Rocky Mountain"` - Colorado
+- `"Mount Rainier"` - Washington
+- `"Crater Lake"` - Oregon
+- `"Zion"` - Utah
+- `"Denali"` - Alaska
+- `"Everglades"` - Florida
+
+**By State:**
+- California: `"Half Dome"`, `"Mount Whitney"`, `"Big Sur"`, `"Joshua Tree"`, `"Death Valley"`
+- Colorado: `"Maroon Bells"`, `"Pikes Peak"`, `"Hanging Lake"`
+- Washington: `"Olympic"`, `"Mount St. Helens"`, `"North Cascades"`
+- Oregon: `"Multnomah Falls"`, `"Mount Hood"`, `"Cannon Beach"`
+- Arizona: `"Sedona"`, `"Havasu Falls"`, `"Monument Valley"`
+- Utah: `"Bryce Canyon"`, `"Arches"`, `"Canyonlands"`
 
 **Example Request:**
 ```json
 {
   "query": "Yosemite",
   "options": {
-    "center": { "lat": 37.7749, "lon": -122.4194 },
-    "radius": 100000,
-    "types": ["trailhead", "trail"],
-    "limit": 10
+    "limit": 5
   }
 }
+```
+
+**Example Response:**
+```json
+[
+  {
+    "id": "507f1f77bcf86cd799439011",
+    "name": "Yosemite Valley Trailhead",
+    "address": "CA",
+    "location": { "lat": 37.7489, "lon": -119.5890 },
+    "type": "trailhead"
+  },
+  {
+    "id": "507f1f77bcf86cd799439012",
+    "name": "Yosemite Valley Trailhead Trail",
+    "address": "A moderate 8.5-mile trail in CA with 1200ft elevation gain.",
+    "location": { "lat": 0, "lon": 0 },
+    "type": "trail"
+  }
+]
 ```
 
 ### 4. Get Location Details
@@ -210,10 +264,20 @@ interface LocationSearchResult {
 ### 6. Get Nearby Locations
 **Endpoint:** `POST /getNearbyLocations`
 
+**Description:** Find locations near a specific point using geospatial search.
+
+> **⚠️ Important:** This endpoint requires **valid numeric coordinates**:
+> - `lat` must be a number between -90 and 90 (NOT null/undefined)
+> - `lon` must be a number between -180 and 180 (NOT null/undefined)
+> - If coordinates are invalid, you'll get an error: `"Invalid coordinates: lat and lon must be valid numbers"`
+
 **Request Body:**
 ```typescript
 {
-  center: { lat: number; lon: number };
+  center: { 
+    lat: number;    // Required: Latitude (-90 to 90)
+    lon: number;    // Required: Longitude (-180 to 180)
+  };
   radius?: number;               // Radius in meters (default: 1000)
   types?: string[];              // Location types (default: ["trailhead", "trail", "transit_stop"])
   limit?: number;                // Max results (default: 20)
@@ -221,6 +285,32 @@ interface LocationSearchResult {
 ```
 
 **Response:** Array of `LocationSearchResult` objects, sorted by distance
+
+**Example Request:**
+```json
+{
+  "center": { "lat": 37.7489, "lon": -119.5890 },
+  "radius": 5000,
+  "types": ["trailhead", "transit_stop"],
+  "limit": 10
+}
+```
+
+**Example Response:**
+```json
+[
+  {
+    "id": "507f1f77bcf86cd799439011",
+    "name": "Yosemite Valley Trailhead",
+    "address": "CA",
+    "location": { "lat": 37.7489, "lon": -119.5890 },
+    "type": "trailhead",
+    "relevance": 1.0,
+    "distance": 245,
+    "tags": ["CA", "moderate", "1200"]
+  }
+]
+```
 
 ---
 
@@ -379,47 +469,79 @@ interface Trail {
 
 ### **1. Route Planning Flow:**
 ```javascript
-// 1. User searches for origin/destination
-const originResults = await fetch('http://localhost:8000/HikingApp/searchLocations', {
+// 1. User searches for hiking destinations (searches MongoDB database)
+const response = await fetch('http://localhost:8000/HikingApp/searchLocations', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ query: 'San Francisco' })
+  body: JSON.stringify({ 
+    query: 'Yosemite',
+    options: { limit: 5 }
+  })
 });
 
-// 2. User selects locations and calculates route
-const route = await fetch('http://localhost:8000/HikingApp/calculateRoute', {
+const results = await response.json();
+// Returns: Array of { id, name, address, location: {lat, lon}, type }
+
+// 2. User selects a trailhead from results
+const selectedTrailhead = results.find(r => r.type === 'trailhead');
+
+// 3. Calculate route to trailhead
+const routeResponse = await fetch('http://localhost:8000/HikingApp/calculateRoute', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
     origin: { lat: 37.7749, lon: -122.4194, address: 'San Francisco, CA' },
-    destination: { lat: 37.7489, lon: -119.5890, address: 'Yosemite Valley, CA' },
+    destination: selectedTrailhead.location,
     mode: 'hiking',
     preferences: { difficulty: 'moderate' }
   })
 });
 
-// 3. Display route with standardized formatting
+const route = await routeResponse.json();
+
+// 4. Display route with standardized formatting
 console.log(`Distance: ${route.totalDistanceFormatted}`);
 console.log(`Duration: ${route.totalDurationFormatted}`);
 ```
 
-### **2. Search with Autocomplete:**
+### **2. Location Search with Autocomplete:**
 ```javascript
-// Real-time search suggestions
-const suggestions = await fetch('http://localhost:8000/HikingApp/getSearchSuggestions', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ query: 'Yos', limit: 5 })
+// Search for hiking locations (case-insensitive, partial matching)
+const searchHikingLocations = async (userInput) => {
+  const response = await fetch('http://localhost:8000/HikingApp/searchLocations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query: userInput,  // e.g., "yosemite", "grand canyon", "mount"
+      options: { limit: 10 }
+    })
+  });
+  
+  const locations = await response.json();
+  
+  // Filter to show only trailheads in autocomplete
+  return locations.filter(loc => loc.type === 'trailhead');
+};
+
+// Example usage: Real-time autocomplete
+document.getElementById('searchInput').addEventListener('input', async (e) => {
+  const query = e.target.value;
+  
+  if (query.length < 2) return; // Wait for 2+ characters
+  
+  const suggestions = await searchHikingLocations(query);
+  displaySuggestions(suggestions); // Show in dropdown
 });
 
-// Full location search
-const locations = await fetch('http://localhost:8000/HikingApp/searchLocations', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    query: 'Yosemite',
-    options: { types: ['trailhead', 'trail'], limit: 10 }
-  })
+// Example: Search button click
+document.getElementById('searchBtn').addEventListener('click', async () => {
+  const query = document.getElementById('searchInput').value;
+  const results = await searchHikingLocations(query);
+  
+  results.forEach(location => {
+    console.log(`${location.name} - ${location.address}`);
+    console.log(`  Coordinates: ${location.location.lat}, ${location.location.lon}`);
+  });
 });
 ```
 

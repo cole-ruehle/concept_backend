@@ -220,6 +220,11 @@ export class TransitRoutePlannerConcept {
       throw new ValidationError(`Invalid criteria: ${criteria}`);
     }
 
+    // Validate ObjectId format
+    if (!ObjectId.isValid(plannedRouteId)) {
+      throw new ValidationError(`Invalid route ID format: ${plannedRouteId}`);
+    }
+
     const originalRoute = await this.plannedRoutes.findOne({
       _id: new ObjectId(plannedRouteId),
     });

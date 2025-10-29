@@ -4,24 +4,38 @@ import { getDb } from "@utils/database.ts";
 import { walk } from "jsr:@std/fs";
 import { parseArgs } from "jsr:@std/cli/parse-args";
 import { toFileUrl } from "jsr:@std/path/to-file-url";
+import { startupTest } from "./scripts/startupTest.ts";
 
 // Parse command-line arguments for port and base URL
 const flags = parseArgs(Deno.args, {
   string: ["port", "baseUrl"],
+  boolean: ["skip-tests"],
   default: {
     port: "8000",
     baseUrl: "",
+    "skip-tests": false,
   },
 });
 
 const PORT = parseInt(flags.port, 10);
 const BASE_URL = flags.baseUrl;
+const SKIP_TESTS = flags["skip-tests"];
 const CONCEPTS_DIR = "src/concepts";
 
 /**
  * Main server function to initialize DB, load concepts, and start the server.
  */
 async function main() {
+  // Run startup tests unless explicitly skipped
+  if (!SKIP_TESTS) {
+    try {
+      await startupTest();
+    } catch (error) {
+      console.error("⚠️  Startup test failed:", error.message);
+      console.log("   Server will continue anyway...\n");
+    }
+  }
+  
   const [db] = await getDb();
   const app = new Hono();
 
@@ -36,6 +50,10 @@ async function main() {
   }));
 
   app.get("/", (c) => c.text("Concept Server is running."));
+
+  // --- Custom RESTful Routes for Navigation ---
+  // These routes provide a RESTful interface for the navigation API
+  let hikingAppInstance: any = null;
 
   // --- Dynamic Concept Loading and Routing ---
   console.log(`Scanning for concepts in ./${CONCEPTS_DIR}...`);
@@ -73,6 +91,11 @@ async function main() {
         `- Registering concept: ${conceptName} at ${BASE_URL}/${conceptApiName}`,
       );
 
+      // Save HikingApp instance for custom routes
+      if (conceptName === "HikingApp") {
+        hikingAppInstance = instance;
+      }
+
       const methodNames = Object.getOwnPropertyNames(
         Object.getPrototypeOf(instance),
       )
@@ -102,6 +125,93 @@ async function main() {
         e,
       );
     }
+  }
+
+  // --- Register Custom RESTful Navigation Routes ---
+  if (hikingAppInstance) {
+    console.log(`\n- Registering custom navigation routes...`);
+    
+    // POST /HikingApp/navigation/start
+    app.post(`${BASE_URL}/HikingApp/navigation/start`, async (c) => {
+      try {
+        const body = await c.req.json();
+        const result = await hikingAppInstance.startNavigation(body);
+        return c.json(result);
+      } catch (e) {
+        console.error("Error starting navigation:", e);
+        return c.json({ error: e.message || "Failed to start navigation" }, 500);
+      }
+    });
+    console.log(`  - Endpoint: POST ${BASE_URL}/HikingApp/navigation/start`);
+    
+    // POST /HikingApp/navigation/:routeId/status
+    app.post(`${BASE_URL}/HikingApp/navigation/:routeId/status`, async (c) => {
+      try {
+        const routeId = c.req.param("routeId");
+        const body = await c.req.json().catch(() => ({}));
+        const result = await hikingAppInstance.getNavigationStatus({
+          routeId,
+          location: body.location
+        });
+        return c.json(result);
+      } catch (e) {
+        console.error("Error getting navigation status:", e);
+        return c.json({ error: e.message || "Failed to get navigation status" }, 500);
+      }
+    });
+    console.log(`  - Endpoint: POST ${BASE_URL}/HikingApp/navigation/:routeId/status`);
+    
+    // POST /HikingApp/navigation/:activeHikeId/update
+    app.post(`${BASE_URL}/HikingApp/navigation/:activeHikeId/update`, async (c) => {
+      try {
+        const activeHikeId = c.req.param("activeHikeId");
+        const body = await c.req.json();
+        const result = await hikingAppInstance.updateNavigationLocation({
+          activeHikeId,
+          location: body.location
+        });
+        return c.json(result);
+      } catch (e) {
+        console.error("Error updating navigation location:", e);
+        return c.json({ error: e.message || "Failed to update location" }, 500);
+      }
+    });
+    console.log(`  - Endpoint: POST ${BASE_URL}/HikingApp/navigation/:activeHikeId/update`);
+    
+    // POST /HikingApp/navigation/:activeHikeId/end
+    app.post(`${BASE_URL}/HikingApp/navigation/:activeHikeId/end`, async (c) => {
+      try {
+        const activeHikeId = c.req.param("activeHikeId");
+        const body = await c.req.json();
+        const result = await hikingAppInstance.endNavigation({
+          activeHikeId,
+          exitPointId: body.exitPointId,
+          location: body.location
+        });
+        return c.json(result);
+      } catch (e) {
+        console.error("Error ending navigation:", e);
+        return c.json({ error: e.message || "Failed to end navigation" }, 500);
+      }
+    });
+    console.log(`  - Endpoint: POST ${BASE_URL}/HikingApp/navigation/:activeHikeId/end`);
+    
+    // GET /HikingApp/status/updates
+    app.get(`${BASE_URL}/HikingApp/status/updates`, async (c) => {
+      try {
+        const userId = c.req.query("userId");
+        const activeHikeId = c.req.query("activeHikeId");
+        const result = await hikingAppInstance.getStatusUpdates({
+          userId,
+          activeHikeId
+        });
+        return c.json(result);
+      } catch (e) {
+        console.error("Error getting status updates:", e);
+        return c.json({ error: e.message || "Failed to get status updates" }, 500);
+      }
+    });
+    console.log(`  - Endpoint: GET ${BASE_URL}/HikingApp/status/updates`);
   }
 
   console.log(`\nServer listening on http://localhost:${PORT}`);

@@ -108,3 +108,5 @@ DB_NAME=your-database-name
 ## 🎯 **You're Ready!**
 
 Your backend is running and ready for frontend integration. All 110+ hiking locations are loaded and the API is fully functional with CORS enabled! 🏔️🥾
+
+

@@ -172,22 +172,71 @@ export class UnifiedRoutingConcept {
     location: { lat: number; lon: number };
     type: "trailhead" | "trail" | "transit_stop" | "poi";
   }[]> {
-    // Use a reasonable radius for search
-    const results = await this.poiSearch.searchPOIs({ lat: 0, lon: 0 }, ["trailhead", "trail", "transit_stop", "poi"], 100, limit);
+    // Search MongoDB database directly for trailheads, trails, and transit stops
+    const results: any[] = [];
     
-    // Filter results by query
-    const filteredResults = results.filter(poi => 
-      poi.name.toLowerCase().includes(query.toLowerCase()) ||
-      (poi.tags.address && poi.tags.address.toLowerCase().includes(query.toLowerCase()))
-    );
+    // Ensure query is a string for MongoDB regex
+    const searchQuery = String(query || '');
     
-    return filteredResults.map(poi => ({
-      id: poi.id,
-      name: poi.name,
-      address: poi.tags.address || "",
-      location: poi.location,
-      type: poi.type as any
-    }));
+    if (!searchQuery || searchQuery.trim().length === 0) {
+      return []; // Return empty array for empty queries
+    }
+    
+    const queryRegex = { $regex: searchQuery, $options: "i" };
+    
+    // Search trailheads
+    const trailheads = await this.db.collection("trailheads").find({
+      name: queryRegex
+    }).limit(limit).toArray();
+    
+    for (const trailhead of trailheads) {
+      results.push({
+        id: trailhead._id.toString(),
+        name: trailhead.name,
+        address: trailhead.tags?.state || "",
+        location: {
+          lat: trailhead.loc.coordinates[1],
+          lon: trailhead.loc.coordinates[0]
+        },
+        type: "trailhead" as const
+      });
+    }
+    
+    // Search trails
+    const trails = await this.db.collection("trails").find({
+      name: queryRegex
+    }).limit(limit).toArray();
+    
+    for (const trail of trails) {
+      results.push({
+        id: trail._id.toString(),
+        name: trail.name,
+        address: trail.description || "",
+        location: { lat: 0, lon: 0 }, // Trails don't have specific locations
+        type: "trail" as const
+      });
+    }
+    
+    // Search transit stops
+    const stops = await this.db.collection("transit_stops").find({
+      name: queryRegex
+    }).limit(limit).toArray();
+    
+    for (const stop of stops) {
+      results.push({
+        id: stop._id.toString(),
+        name: stop.name,
+        address: stop.tags?.city || "",
+        location: {
+          lat: stop.loc.coordinates[1],
+          lon: stop.loc.coordinates[0]
+        },
+        type: "transit_stop" as const
+      });
+    }
+    
+    // Limit and return results
+    return results.slice(0, limit);
   }
 
   /**

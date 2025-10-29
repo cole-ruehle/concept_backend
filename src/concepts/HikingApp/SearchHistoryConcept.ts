@@ -138,7 +138,7 @@ export class SearchHistoryConcept {
   /**
    * Clear search history for a user or session
    */
-  async clearHistory(userId?: string, sessionId?: string): Promise<number> {
+  async clearHistory(userId?: string, sessionId?: string): Promise<{ deletedCount: number }> {
     const query: any = {};
     
     if (userId) {
@@ -150,7 +150,7 @@ export class SearchHistoryConcept {
     }
 
     const result = await this.searchHistory.deleteMany(query);
-    return result.deletedCount;
+    return { deletedCount: result.deletedCount || 0 };
   }
 
   /**
