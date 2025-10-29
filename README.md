@@ -1,6 +1,34 @@
-# 6.104 Assignment 4: Implementing Concepts
+# TrailLink: LLM-Orchestrated Route Planning Backend
 
-In this assignment, you'll begin creating your backend by implementing your concepts in TypeScript. You'll learn to use Context, a simple CLI tool and a new way to both collaborate with LLMs and drive your implementation through design.
+An intelligent hiking route planner that combines Google Maps APIs with LLM orchestration for natural language-based multi-modal route planning.
+
+## 📖 Project Documentation
+
+**See [DESIGN.md](DESIGN.md) for complete system architecture, user flows, and API specification.**
+
+---
+
+## 🚀 Quick Start
+
+```bash
+# 1. Copy environment template and add your API keys
+cp env.template .env
+nano .env  # Add GEMINI_API_KEY and GOOGLE_MAPS_API_KEY
+
+# 2. Start the server
+deno task start
+
+# 3. Test it
+deno task test:quick
+```
+
+**Main Endpoint:** `POST /api/plan-route`
+
+---
+
+# Original Assignment: 6.104 Implementing Concepts
+
+This backend was built as part of MIT 6.104 Assignment 4, implementing concepts in TypeScript using the Context CLI tool for LLM collaboration.
 
 # Setup (Prep)
 

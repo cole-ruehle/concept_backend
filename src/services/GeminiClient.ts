@@ -38,7 +38,7 @@ export class GeminiClient {
   private model: string;
   private baseUrl = "https://generativelanguage.googleapis.com/v1beta";
 
-  constructor(apiKey: string, model = "gemini-1.5-pro") {
+  constructor(apiKey: string, model = "gemini-2.5-flash") {
     this.apiKey = apiKey;
     this.model = model;
   }

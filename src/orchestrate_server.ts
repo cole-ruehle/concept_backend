@@ -17,12 +17,12 @@ const GOOGLE_MAPS_API_KEY = Deno.env.get("GOOGLE_MAPS_API_KEY");
 const PORT = parseInt(Deno.env.get("PORT") || "8000", 10);
 
 if (!GEMINI_API_KEY) {
-  console.error("❌ GEMINI_API_KEY environment variable is required");
+  console.error("ERROR: GEMINI_API_KEY environment variable is required");
   Deno.exit(1);
 }
 
 if (!GOOGLE_MAPS_API_KEY) {
-  console.error("❌ GOOGLE_MAPS_API_KEY environment variable is required");
+  console.error("ERROR: GOOGLE_MAPS_API_KEY environment variable is required");
   Deno.exit(1);
 }
 
@@ -78,19 +78,23 @@ async function main() {
         }, 400);
       }
 
-      console.log(`\n🚀 New route planning request:`);
+      console.log(`\nNew route planning request:`);
       console.log(`   Query: ${requestBody.query}`);
       console.log(`   Location: ${requestBody.userLocation.lat}, ${requestBody.userLocation.lng}`);
+      if (requestBody.currentRoute) {
+        console.log(`   Modifying route: ${requestBody.currentRoute.route_id}`);
+      }
 
       // Plan the route
       response = await orchestrator.planRoute({
         query: requestBody.query,
         userLocation: requestBody.userLocation,
         preferences: requestBody.preferences || {},
+        currentRoute: requestBody.currentRoute, // Pass through currentRoute
       });
 
       const duration = Date.now() - startTime;
-      console.log(`✅ Route planned successfully in ${duration}ms`);
+      console.log(`Route planned successfully in ${duration}ms`);
       console.log(`   Route: ${response.route.name}`);
       console.log(`   Total time: ${response.route.metrics.totalMin} minutes`);
       console.log(`   Segments: ${response.route.segments.length}`);
@@ -119,7 +123,7 @@ async function main() {
       error = err;
       const duration = Date.now() - startTime;
       
-      console.error(`❌ Route planning failed in ${duration}ms:`, err);
+      console.error(`Route planning failed in ${duration}ms:`, err);
 
       // Log error to database
       requestLogs.insertOne({
@@ -141,7 +145,7 @@ async function main() {
 
   // Legacy endpoint - redirect to new API
   app.post("/api/orchestrate", async (c) => {
-    console.log("⚠️  /api/orchestrate is deprecated, use /api/plan-route instead");
+    console.log("WARNING: /api/orchestrate is deprecated, use /api/plan-route instead");
     
     try {
       const body = await c.req.json();
@@ -187,12 +191,12 @@ async function main() {
     }
   });
 
-  console.log(`\n🌟 Orchestrate Server Starting...`);
+  console.log(`\nOrchestrate Server Starting...`);
   console.log(`   Port: ${PORT}`);
-  console.log(`   Gemini: ✓`);
-  console.log(`   Google Maps: ✓`);
-  console.log(`   MongoDB: ✓`);
-  console.log(`\n📍 Main endpoint: POST /api/plan-route`);
+  console.log(`   Gemini: OK`);
+  console.log(`   Google Maps: OK`);
+  console.log(`   MongoDB: OK`);
+  console.log(`\nMain endpoint: POST /api/plan-route`);
   console.log(`   Health check: GET /api/health`);
   console.log(`   Request logs: GET /api/logs\n`);
 

@@ -74,14 +74,14 @@ async function runTest(testCase: TestCase): Promise<boolean> {
 
     if (!response.ok) {
       const error = await response.json();
-      console.error(`❌ Request failed (${response.status}):`, error);
+      console.error(`ERROR: Request failed (${response.status}):`, error);
       return false;
     }
 
     const result = await response.json();
 
-    console.log(`\n✅ Success! (${duration}ms)`);
-    console.log(`\n📍 Route Details:`);
+    console.log(`\nSUCCESS! (${duration}ms)`);
+    console.log(`\nRoute Details:`);
     console.log(`   ID: ${result.route.route_id}`);
     console.log(`   Name: ${result.route.name}`);
     console.log(`   Total time: ${result.route.metrics.totalMin} minutes`);
@@ -89,7 +89,7 @@ async function runTest(testCase: TestCase): Promise<boolean> {
       `   ETA: ${new Date(result.route.metrics.etaArrival).toLocaleString()}`
     );
 
-    console.log(`\n🗺️  Segments:`);
+    console.log(`\nSegments:`);
     result.route.segments.forEach((segment: any, i: number) => {
       console.log(`   ${i + 1}. [${segment.mode}] ${segment.instructions}`);
       console.log(
@@ -97,33 +97,33 @@ async function runTest(testCase: TestCase): Promise<boolean> {
       );
     });
 
-    console.log(`\n💡 Suggestions:`);
+    console.log(`\nSuggestions:`);
     result.suggestions.forEach((suggestion: string) => {
       console.log(`   • ${suggestion}`);
     });
 
     return true;
   } catch (error) {
-    console.error(`❌ Test failed:`, error.message);
+    console.error(`FAILED:`, error.message);
     return false;
   }
 }
 
 async function main() {
-  console.log("\n🚀 Orchestrate Endpoint Test Suite");
+  console.log("\nOrchestrate Endpoint Test Suite");
   console.log(`   Base URL: ${BASE_URL}\n`);
 
   // Health check first
   try {
     const health = await fetch(`${BASE_URL}/api/health`);
     if (!health.ok) {
-      console.error("❌ Server health check failed!");
+      console.error("ERROR: Server health check failed!");
       Deno.exit(1);
     }
-    console.log("✅ Server is healthy\n");
+    console.log("Server is healthy\n");
   } catch (error) {
-    console.error("❌ Cannot connect to server:", error.message);
-    console.log("\n💡 Make sure the server is running:");
+    console.error("ERROR: Cannot connect to server:", error.message);
+    console.log("\nTIP: Make sure the server is running:");
     console.log("   deno task start\n");
     Deno.exit(1);
   }
@@ -144,11 +144,11 @@ async function main() {
   }
 
   console.log(`\n${"=".repeat(60)}`);
-  console.log(`📊 Test Results`);
+  console.log(`Test Results`);
   console.log(`${"=".repeat(60)}`);
-  console.log(`✅ Passed: ${passed}`);
-  console.log(`❌ Failed: ${failed}`);
-  console.log(`📈 Total: ${passed + failed}`);
+  console.log(`Passed: ${passed}`);
+  console.log(`Failed: ${failed}`);
+  console.log(`Total: ${passed + failed}`);
   console.log();
 
   if (failed > 0) {
