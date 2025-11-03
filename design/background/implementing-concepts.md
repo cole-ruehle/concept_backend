@@ -27,7 +27,7 @@ The following prefix format for header 1 blocks denote the relevant steps:
 
 * `# concept: {name}`
 	* A specification of the concept we're looking to implement
-* `# file: src/{name}/{name}Concept.ts`
+* `# file: src/concepts/{name}/{name}Concept.ts`
 	* The implementation of the concept class as a TypeScript code block
 * `# problem:`
 	* Description of any issues that arise with running/operating the implementation
