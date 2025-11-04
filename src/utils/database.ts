@@ -55,7 +55,7 @@ async function dropAllCollections(db: Db): Promise<void> {
  */
 export async function getDb() {
   const [client, DB_NAME] = await init();
-  return [client.db(DB_NAME), client];
+  return [client.db(DB_NAME), client] as [Db, MongoClient];
 }
 
 /**
