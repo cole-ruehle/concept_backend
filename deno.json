@@ -8,17 +8,10 @@
         "@syncs": "./src/syncs/syncs.ts"
     },
     "tasks": {
-        "start": "deno run --allow-net --allow-write --allow-read --allow-sys --allow-env src/main.ts",
-        "concepts": "deno run --allow-net --allow-read --allow-sys --allow-env src/concept_server.ts --port 8000 --baseUrl /api",
-        "import": "deno run --allow-read --allow-write --allow-env src/utils/generate_imports.ts",
-        "build": "deno run import"
-    },
-    "lint": {
-        "rules": {
-            "exclude": [
-                "no-import-prefix",
-                "no-unversioned-import"
-            ]
-        }
+        "start": "deno run --allow-net --allow-read --allow-sys --allow-env src/orchestrate_server.ts",
+        "dev": "deno run --allow-net --allow-read --allow-sys --allow-env --watch src/orchestrate_server.ts",
+        "test": "deno run --allow-net src/scripts/testOrchestrate.ts",
+        "test:quick": "deno run --allow-net src/scripts/testQuickActions.ts",
+        "concepts": "deno run --allow-net --allow-read --allow-sys --allow-env src/concept_server.ts --port 8000 --baseUrl /api"
     }
 }
