@@ -1,5 +1,6 @@
 
 ### Concept 2: DynamicExitPlanner
+# Depricated
 
 **purpose** Provide real-time exit strategies and alternative return routes during active hikes
 

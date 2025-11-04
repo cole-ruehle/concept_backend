@@ -1,4 +1,31 @@
 
+# TrailLink HikingApp Design
+
+**Last Updated**: November 2025
+
+## 🚨 Deprecated Concepts
+
+The following concepts have been **deprecated** and removed from the project in favor of a simpler, more flexible architecture using LLM-based route planning:
+
+- ❌ **TransitRoutePlanner** - Replaced by LLMRoutePlanner
+- ❌ **DynamicExitPlanner** - Replaced by LLMRoutePlanner (handles exit routes via natural language)
+- ❌ **ConstraintMonitor** - Removed (constraints handled by Google Maps APIs directly)
+- ❌ **ExternalRoutingEngine** - Simplified to service layer (not a concept)
+
+### Why the Change?
+
+**Old Approach**: Multiple specialized concepts for different routing scenarios
+- Complex synchronizations between concepts
+- Rigid action signatures
+- Hard to extend with new features
+
+**New Approach**: Single LLMRoutePlanner concept
+- Natural language interface ("find trails near Boston", "I need to exit now")
+- Flexible - handles all routing scenarios through LLM interpretation
+- Easy to extend - just update LLM prompts
+- Simpler architecture - fewer concepts, fewer syncs
+
+---
 
 ## Problem Statement
 
@@ -61,130 +88,103 @@ The app provides real-time suggestions for the best return routes at various poi
 **3. Real-Time Constraint Integration**
 TrailLink incorporates live data about transit schedules, daylight hours, weather conditions, and trail status to ensure planned routes are actually feasible and safe. This feature prevents users from getting stranded due to missed connections or poor planning, significantly reducing the risk associated with transit-dependent hiking. Conservation organizations benefit from better-informed visitors who are less likely to require emergency assistance.
 
-## Concept Design
+## Current Concept Design (Active)
 
-### Concept 1: TransitRoutePlanner
+### Core Concepts
 
-**purpose** Plan and optimize multi-modal routes combining public transportation with hiking segments
+#### Concept 1: User
+**See**: `User.md`
+- Authentication and session management
+- User registration, login, password management
 
-**principle** Users specify a starting location, desired hiking area, and constraints; the system calculates the total available time, subtracts transit time, and finds the longest possible hiking route that fits within the remaining time, then plans the complete journey (transit → hiking → transit home)
+#### Concept 2: Profile
+**See**: `Profile.md`
+- Public-facing user identity
+- Privacy controls and discoverability
+- Experience levels, preferences
 
-**state**
-- A set of TransitStops with location, name, and available routes
-- A set of Trailheads with location, name, and connecting trails  
-- A set of PlannedRoutes with origin, destination, transit segments, hiking segments, and total duration
-- A set of RouteConstraints with maxTravelTime, preferredDepartureTime, and accessibility requirements
+#### Concept 3: UserHistory
+**See**: `UserHistory.md`
+- Activity tracking and social feed
+- Statistics and achievements
+- Popular route recommendations
 
-**actions**
-- planRoute(origin: Location, destination: Trailhead, constraints: RouteConstraints): (route: PlannedRoute)
-  **requires** origin and destination are valid locations, constraints specify valid time limits
-  **effects** calculates total available time, subtracts transit time, finds longest hiking route that fits, creates complete journey plan
-- getAlternativeRoutes(route: PlannedRoute, criteria: String): (alternatives: Set(PlannedRoute))
-  **requires** route exists and criteria is valid ("faster", "shorter", "scenic")
-  **effects** returns set of alternative routes meeting the specified criteria
-- updateRouteConstraints(route: PlannedRoute, newConstraints: RouteConstraints): (updatedRoute: PlannedRoute)
-  **requires** route exists and newConstraints are valid
-  **effects** recalculates route with new constraints, returns updated route or null if no valid route exists
+#### Concept 4: LLMRoutePlanner
+**See**: `LLMRoutePlanner.md`
 
-### Concept 2: DynamicExitPlanner
+**purpose** Enable natural language-based multi-modal route planning (transit + hiking) through LLM orchestration
 
-**purpose** Provide real-time exit strategies and alternative return routes during active hikes
-
-**principle** As users progress along a hike, the system continuously monitors their location and available exit options, suggesting optimal return routes based on current conditions and user state
+**principle** Users provide natural language queries like "find hiking trails near Boston accessible by MBTA" or "I need to exit my hike now and get home". The LLM interprets intent and orchestrates Google Maps APIs to generate complete routes with transit + hiking segments.
 
 **state**
-- A set of ActiveHikes with current location, start time, and planned route
-- A set of ExitPoints with location, accessibility, and transit connections
-- A set of ExitStrategies with recommended exit point, transit route, and estimated arrival time
+- RouteRequests: Logged requests with query, response, timing, success/failure
+- Request history per user for analytics and rate limiting
 
 **actions**
-- startHike(route: PlannedRoute, user: User): (hike: ActiveHike)
-  **requires** route is valid and user is not already on an active hike
-  **effects** creates new ActiveHike with current location set to trailhead, start time recorded
-- updateLocation(hike: ActiveHike, newLocation: Location): (updatedHike: ActiveHike)
-  **requires** hike is active and newLocation is valid
-  **effects** updates hike's current location, recalculates available exit strategies based on new position
-- getExitStrategies(hike: ActiveHike): (strategies: Set(ExitStrategy))
-  **requires** hike is active
-  **effects** returns set of possible exit strategies from current location, including transit connections and estimated arrival times
-- endHike(hike: ActiveHike, exitPoint: ExitPoint): (completedHike: CompletedHike)
-  **requires** hike is active and exitPoint is valid
-  **effects** marks hike as completed, records end time and exit point, returns completed hike record
+- planRoute(userId, query, userLocation, preferences?, currentRoute?): (route, suggestions)
+  - Handles new route creation from natural language
+  - Handles route modifications ("add a scenic viewpoint", "exit now")
+  - Uses Gemini LLM for intent detection
+  - Calls Google Maps APIs for actual routing
+  - Returns complete route with segments, metrics, suggestions
 
-### Concept 3: ConstraintMonitor
+- getRequestHistory(userId, limit?): (requests)
+- getUsageStats(userId): (stats)
+- getGlobalStats(): (stats)
 
-**purpose** Monitor and integrate real-time constraints that affect route feasibility and safety
+**Why This Approach?**
+- ✅ Flexible: Natural language handles all routing scenarios
+- ✅ Simple: One concept instead of 4+ specialized concepts
+- ✅ Extensible: Add features by updating LLM prompts
+- ✅ User-friendly: No learning rigid command structures
+- ✅ Handles everything: New routes, modifications, exit strategies, all via natural language
 
-**principle** Continuously gather and process data about transit schedules, weather, daylight, and trail conditions to ensure planned routes remain viable and safe
+**Example Queries**:
+- "Find hiking trails near Boston accessible by MBTA"
+- "I need to exit my hike now and get home" (emergency exit)
+- "Add a scenic viewpoint to my current route"
+- "Find a 3-hour hike with easy difficulty"
 
-**state**
-- A set of TransitSchedules with route, stop, and time information
-- A set of WeatherConditions with location, forecast, and current conditions
-- A set of TrailConditions with trail status, closures, and difficulty ratings
-- A set of ConstraintAlerts with affected routes and recommended actions
+### Support Concepts (No Syncs - Internal Use)
 
-**actions**
-- updateTransitSchedules(): (updatedSchedules: Set(TransitSchedule))
-  **requires** none
-  **effects** fetches latest transit schedule data from external sources, updates internal schedule state, returns set of updated schedules
-- checkWeatherConditions(location: Location): (conditions: WeatherConditions)
-  **requires** location is valid
-  **effects** queries weather service for current and forecast conditions at location, returns weather data with timestamps
-- getTrailConditions(trail: Trail): (conditions: TrailConditions)
-  **requires** trail exists
-  **effects** checks trail status (open/closed), difficulty ratings, and any reported issues, returns current trail conditions
-- generateAlerts(route: PlannedRoute): (alerts: Set(ConstraintAlert))
-  **requires** route exists
-  **effects** analyzes route against current constraints (weather, transit, trail conditions), returns set of alerts for any issues found
+These concepts support the core functionality but aren't directly user-facing:
 
-### Concept 4: ExternalRoutingEngine
+- **UnifiedRouting**: Search interface for trails and locations
+- **LocationSearch**: Geocoding and location lookup
+- **MapVisualization**: Map tile generation
+- **POISearch**: Points of interest search
+- **SearchHistory**: Query tracking
 
-**purpose** Provide accurate routing and mapping calculations using external mapping services
+### Services (Not Concepts)
 
-**principle** Delegates complex routing calculations to specialized external services (like Valhalla, OpenRouteService, or Google Maps API) that can handle detailed network analysis, turn-by-turn directions, and real-time traffic data
+These remain as service-layer components:
+- **RoutePlannerOrchestrator**: Used internally by LLMRoutePlanner
+- **GeminiClient**: LLM API wrapper
+- **GoogleMapsClient**: Maps API wrapper
+- **GeocodingService**: Address resolution
+- **OSMService**: OpenStreetMap data access
 
-**state**
-- A set of RoutingRequests with origin, destination, mode, and constraints
-- A set of RoutingResults with detailed paths, distances, durations, and turn-by-turn instructions
-- A set of NetworkData with road networks, transit networks, and trail networks
+---
 
-**actions**
-- calculateRoute(origin: Location, destination: Location, mode: String, constraints: Map): (result: RoutingResult)
-  **requires** origin and destination are valid coordinates, mode is supported ("driving", "walking", "transit", "cycling")
-  **effects** queries external routing service with parameters, returns detailed route with instructions and metadata
-- getAlternativeRoutes(origin: Location, destination: Location, mode: String, maxAlternatives: Integer): (results: Set(RoutingResult))
-  **requires** origin and destination are valid, maxAlternatives > 0
-  **effects** requests multiple route options from external service, returns ranked set of alternatives
-- updateNetworkData(): (updated: Boolean)
-  **requires** none
-  **effects** refreshes cached network data from external sources, returns true if updates were found
+## ~~Deprecated Concepts~~ (Removed)
 
-**notes**
-This concept represents integration with external mapping services rather than building routing capabilities from scratch. Services like Valhalla, OpenRouteService, or commercial APIs provide the underlying routing engine that powers the transit and hiking route calculations.
+The following concepts were removed in favor of the LLMRoutePlanner approach:
 
-### Essential Synchronizations
+### ~~TransitRoutePlanner~~ ❌ REMOVED
+- **Why deprecated**: LLMRoutePlanner handles all route planning scenarios
+- **Replacement**: Natural language queries to LLMRoutePlanner
 
-*These synchronizations ensure that route planning integrates real-time constraints and external routing data, that active hikes are monitored for safety issues, and that exit strategies are calculated using accurate routing information. The synchronizations create a cohesive system where planning, monitoring, and navigation work together seamlessly.*
+### ~~DynamicExitPlanner~~ ❌ REMOVED
+- **Why deprecated**: LLMRoutePlanner handles exit strategies via queries like "I need to exit now"
+- **Replacement**: LLMRoutePlanner with `currentRoute` parameter
 
-**sync routePlanning**
-when TransitRoutePlanner.planRoute(origin, destination, constraints)
-then ConstraintMonitor.checkWeatherConditions(destination) and ConstraintMonitor.getTrailConditions(destination) and ExternalRoutingEngine.calculateRoute(origin, destination, "transit", constraints)
+### ~~ConstraintMonitor~~ ❌ REMOVED  
+- **Why deprecated**: Constraints (weather, schedules) handled by Google Maps APIs directly
+- **Replacement**: Google Maps API real-time data
 
-**sync hikeMonitoring**  
-when DynamicExitPlanner.startHike(route, user)
-then ConstraintMonitor.generateAlerts(route)
-
-**sync constraintUpdates**
-when ConstraintMonitor.updateTransitSchedules()
-then TransitRoutePlanner.getAlternativeRoutes(affectedRoutes, "transit")
-
-**sync exitRouteCalculation**
-when DynamicExitPlanner.getExitStrategies(hike)
-then ExternalRoutingEngine.calculateRoute(hike.currentLocation, exitPoint, "walking", {})
-
-### Concept Integration Notes
-
-The TransitRoutePlanner serves as the core planning engine, handling the complex optimization of multi-modal routes. The DynamicExitPlanner provides real-time safety and flexibility during active hikes, while the ConstraintMonitor ensures all planning remains current and safe. The TransitRoutePlanner's generic route type is instantiated with specific transit and hiking segments, while the DynamicExitPlanner's user type is bound to registered TrailLink users. The ConstraintMonitor operates independently but provides critical data to both other concepts through synchronizations.
+### ~~ExternalRoutingEngine~~ ❌ REMOVED
+- **Why deprecated**: Simplified to service layer instead of concept
+- **Replacement**: GoogleMapsClient service + OSMService
 
 ## UI Sketches
 
