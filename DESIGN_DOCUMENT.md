@@ -8,7 +8,7 @@ This document concisely summarizes the progression of my design from the initial
 ## Repository Configuration
 
 <!-- UPDATE THIS URL when moving this file to a different repository -->
-**Backend Repository Base URL:** `https://github.com/YOUR_USERNAME/concept_backend`
+**Backend Repository Base URL:** `https://github.com/cole-ruehle/concept_backend`
 
 > **Note:** When this document is moved to a new repository (e.g., a portfolio or documentation repo), simply update the above URL to point back to the TrailLink backend repository. All links below will reference this base.
 
@@ -75,7 +75,7 @@ November 2025 (LLM-Based Architecture)
 
 ### Deprecated Concepts (October 2025)
 
-**Full Deprecation Log:** [DEPRECATED_CONCEPTS.md]({BASE_URL}/blob/main/DEPRECATED_CONCEPTS.md)
+**Full Deprecation Log:** [DEPRECATED_CONCEPTS.md](https://github.com/cole-ruehle/concept_backend/blob/main/DEPRECATED_CONCEPTS.md)
 
 Four specialized routing concepts were removed:
 
@@ -87,14 +87,14 @@ Four specialized routing concepts were removed:
 | **TransitRoutePlanner** | Multi-modal route planning | LLMRoutePlanner (natural language) | ~500 |
 
 **Early Specification Snapshots:**
-- [ConstraintMonitor Spec]({BASE_URL}/blob/main/design/concepts/HikingApp/ConstraintMonitor.md)
-- [DynamicExitPlanner Spec]({BASE_URL}/blob/main/design/concepts/HikingApp/DynamicExitPlanner.md)
-- [ExternalRoutingEngine Spec]({BASE_URL}/blob/main/design/concepts/HikingApp/ExternalRoutingEngine.md)
-- [TransitRoutePlanner Spec]({BASE_URL}/blob/main/design/concepts/HikingApp/TransitRoutePlanner.md)
+- [ConstraintMonitor Spec](https://github.com/cole-ruehle/concept_backend/blob/main/design/concepts/HikingApp/ConstraintMonitor.md)
+- [DynamicExitPlanner Spec](https://github.com/cole-ruehle/concept_backend/blob/main/design/concepts/HikingApp/DynamicExitPlanner.md)
+- [ExternalRoutingEngine Spec](https://github.com/cole-ruehle/concept_backend/blob/main/design/concepts/HikingApp/ExternalRoutingEngine.md)
+- [TransitRoutePlanner Spec](https://github.com/cole-ruehle/concept_backend/blob/main/design/concepts/HikingApp/TransitRoutePlanner.md)
 
 **Context Snapshots (Development History):**
-- [Early Implementation Discussions]({BASE_URL}/tree/main/context/design/concepts/HikingApp/implementation.md) - 21 snapshots showing iterative development
-- [LikertSurvey Concept Development]({BASE_URL}/tree/main/context/design/concepts/LikertSurvey) - Early concept experimentation
+- [Early Implementation Discussions](https://github.com/cole-ruehle/concept_backend/tree/main/context/design/concepts/HikingApp/implementation.md) - 21 snapshots showing iterative development
+- [LikertSurvey Concept Development](https://github.com/cole-ruehle/concept_backend/tree/main/context/design/concepts/LikertSurvey) - Early concept experimentation
 
 ### Current Concept Architecture
 
@@ -103,24 +103,24 @@ Four specialized routing concepts were removed:
 1. **LLMRoutePlanner** - Natural language route planning
    - Handles all routing scenarios via single natural language interface
    - Replaces 4 specialized concepts
-   - [Specification]({BASE_URL}/blob/main/design/concepts/HikingApp/LLMRoutePlanner.md)
-   - [Implementation]({BASE_URL}/blob/main/src/concepts/LLMRoutePlanner/LLMRoutePlannerConcept.ts)
+   - [Specification](https://github.com/cole-ruehle/concept_backend/blob/main/design/concepts/HikingApp/LLMRoutePlanner.md)
+   - [Implementation](https://github.com/cole-ruehle/concept_backend/blob/main/src/concepts/LLMRoutePlanner/LLMRoutePlannerConcept.ts)
 
 2. **User** - Authentication and session management
    - Register, login, logout, session validation
-   - [Specification]({BASE_URL}/blob/main/design/concepts/HikingApp/User.md)
-   - [Implementation]({BASE_URL}/blob/main/src/concepts/HikingApp/User.ts)
+   - [Specification](https://github.com/cole-ruehle/concept_backend/blob/main/design/concepts/HikingApp/User.md)
+   - [Implementation](https://github.com/cole-ruehle/concept_backend/blob/main/src/concepts/HikingApp/User.ts)
 
 3. **Profile** - Public user profiles
    - Display name, bio, preferences
    - Separate from authentication concerns
-   - [Specification]({BASE_URL}/blob/main/design/concepts/HikingApp/Profile.md)
-   - [Implementation]({BASE_URL}/blob/main/src/concepts/HikingApp/Profile.ts)
+   - [Specification](https://github.com/cole-ruehle/concept_backend/blob/main/design/concepts/HikingApp/Profile.md)
+   - [Implementation](https://github.com/cole-ruehle/concept_backend/blob/main/src/concepts/HikingApp/Profile.ts)
 
 4. **UserHistory** - Activity and location tracking
    - Route history, location sharing, popular destinations
-   - [Specification]({BASE_URL}/blob/main/design/concepts/HikingApp/UserHistory.md)
-   - [Implementation]({BASE_URL}/blob/main/src/concepts/HikingApp/UserHistory.ts)
+   - [Specification](https://github.com/cole-ruehle/concept_backend/blob/main/design/concepts/HikingApp/UserHistory.md)
+   - [Implementation](https://github.com/cole-ruehle/concept_backend/blob/main/src/concepts/HikingApp/UserHistory.ts)
 
 ### Why This Change?
 
@@ -263,9 +263,9 @@ Below are the complete specifications for all active concepts in the TrailLink b
 - Context-aware suggestions
 
 **Links:**
-- [Full Specification]({BASE_URL}/blob/main/design/concepts/HikingApp/LLMRoutePlanner.md)
-- [Implementation]({BASE_URL}/blob/main/src/concepts/LLMRoutePlanner/LLMRoutePlannerConcept.ts)
-- [API Documentation]({BASE_URL}/blob/main/API_SPECIFICATION.md#llm-route-planner)
+- [Full Specification](https://github.com/cole-ruehle/concept_backend/blob/main/design/concepts/HikingApp/LLMRoutePlanner.md)
+- [Implementation](https://github.com/cole-ruehle/concept_backend/blob/main/src/concepts/LLMRoutePlanner/LLMRoutePlannerConcept.ts)
+- [API Documentation](https://github.com/cole-ruehle/concept_backend/blob/main/API_SPECIFICATION.md#llm-route-planner)
 
 **Core Actions:**
 - `planRoute(query, userLocation, preferences?, currentRoute?)` → RouteResponse
@@ -281,9 +281,9 @@ Below are the complete specifications for all active concepts in the TrailLink b
 - Automatic session expiration
 
 **Links:**
-- [Full Specification]({BASE_URL}/blob/main/design/concepts/HikingApp/User.md)
-- [Implementation]({BASE_URL}/blob/main/src/concepts/HikingApp/User.ts)
-- [API Documentation]({BASE_URL}/blob/main/API_SPECIFICATION.md#user-authentication)
+- [Full Specification](https://github.com/cole-ruehle/concept_backend/blob/main/design/concepts/HikingApp/User.md)
+- [Implementation](https://github.com/cole-ruehle/concept_backend/blob/main/src/concepts/HikingApp/User.ts)
+- [API Documentation](https://github.com/cole-ruehle/concept_backend/blob/main/API_SPECIFICATION.md#user-authentication)
 
 **Core Actions:**
 - `register(username, password, email)` → userId
@@ -302,9 +302,9 @@ Below are the complete specifications for all active concepts in the TrailLink b
 - Privacy-focused (separate from User concept)
 
 **Links:**
-- [Full Specification]({BASE_URL}/blob/main/design/concepts/HikingApp/Profile.md)
-- [Implementation]({BASE_URL}/blob/main/src/concepts/HikingApp/Profile.ts)
-- [API Documentation]({BASE_URL}/blob/main/API_SPECIFICATION.md#profile-management)
+- [Full Specification](https://github.com/cole-ruehle/concept_backend/blob/main/design/concepts/HikingApp/Profile.md)
+- [Implementation](https://github.com/cole-ruehle/concept_backend/blob/main/src/concepts/HikingApp/Profile.ts)
+- [API Documentation](https://github.com/cole-ruehle/concept_backend/blob/main/API_SPECIFICATION.md#profile-management)
 
 **Core Actions:**
 - `createProfile(userId, displayName, bio?)` → profileId
@@ -323,9 +323,9 @@ Below are the complete specifications for all active concepts in the TrailLink b
 - Personal hiking statistics
 
 **Links:**
-- [Full Specification]({BASE_URL}/blob/main/design/concepts/HikingApp/UserHistory.md)
-- [Implementation]({BASE_URL}/blob/main/src/concepts/HikingApp/UserHistory.ts)
-- [API Documentation]({BASE_URL}/blob/main/API_SPECIFICATION.md#user-history)
+- [Full Specification](https://github.com/cole-ruehle/concept_backend/blob/main/design/concepts/HikingApp/UserHistory.md)
+- [Implementation](https://github.com/cole-ruehle/concept_backend/blob/main/src/concepts/HikingApp/UserHistory.ts)
+- [API Documentation](https://github.com/cole-ruehle/concept_backend/blob/main/API_SPECIFICATION.md#user-history)
 
 **Core Actions:**
 - `recordHike(userId, route, completedAt)` → hikeId
@@ -339,29 +339,34 @@ Below are the complete specifications for all active concepts in the TrailLink b
 
 For complete implementation details, API specifications, and testing documentation, see:
 
-- [API Specification]({BASE_URL}/blob/main/API_SPECIFICATION.md) - Complete REST API documentation
-- [Implementation Summary]({BASE_URL}/blob/main/IMPLEMENTATION_SUMMARY.md) - Technical implementation details
-- [Synchronizations]({BASE_URL}/blob/main/design/concepts/HikingApp/synchronizations.md) - Concept synchronization logic
-- [Testing Documentation]({BASE_URL}/blob/main/design/concepts/HikingApp/testing.md) - Test coverage and strategies
-- [README]({BASE_URL}/blob/main/README.md) - Setup and deployment instructions
+- [API Specification](https://github.com/cole-ruehle/concept_backend/blob/main/API_SPECIFICATION.md) - Complete REST API documentation
+- [Implementation Summary](https://github.com/cole-ruehle/concept_backend/blob/main/IMPLEMENTATION_SUMMARY.md) - Technical implementation details
+- [Synchronizations](https://github.com/cole-ruehle/concept_backend/blob/main/design/concepts/HikingApp/synchronizations.md) - Concept synchronization logic
+- [Testing Documentation](https://github.com/cole-ruehle/concept_backend/blob/main/design/concepts/HikingApp/testing.md) - Test coverage and strategies
+- [README](https://github.com/cole-ruehle/concept_backend/blob/main/README.md) - Setup and deployment instructions
 
 ---
 
 ## How to Update Links
 
-When moving this document to a different repository:
+All links in this document are currently configured to point to the TrailLink backend repository at:
+**`https://github.com/cole-ruehle/concept_backend`**
 
-1. Update the **Repository Configuration** section at the top of this document
-2. Replace `{BASE_URL}` placeholder with your actual GitHub repository URL
+If you move this document to a different repository (e.g., a portfolio or documentation repo):
+
+1. Update the **Repository Configuration** section at the top of this document with the new base URL
+2. Use find-and-replace throughout the document:
+   - Find: `https://github.com/cole-ruehle/concept_backend`
+   - Replace with: your new repository URL
 3. All links will automatically point back to the correct files in the backend repository
 
-**Example:**
-```markdown
-<!-- Change from: -->
-**Backend Repository Base URL:** `https://github.com/YOUR_USERNAME/concept_backend`
-
-<!-- To: -->
-**Backend Repository Base URL:** `https://github.com/cole-school/traillink-backend`
+**Example:** If moving to a portfolio repo, replace all instances of:
+```
+https://github.com/cole-ruehle/concept_backend
+```
+with:
+```
+https://github.com/YOUR_USERNAME/traillink-backend
 ```
 
-Then use find-and-replace: `{BASE_URL}` → `https://github.com/cole-school/traillink-backend`
+This maintains all the references to the original backend code, specifications, and context files.
