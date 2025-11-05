@@ -18,7 +18,7 @@ import "jsr:@std/dotenv/load";
 const PORT = parseInt(Deno.env.get("PORT") ?? "8000", 10);
 const REQUESTING_BASE_URL = Deno.env.get("REQUESTING_BASE_URL") ?? "/api";
 const REQUESTING_TIMEOUT = parseInt(
-  Deno.env.get("REQUESTING_TIMEOUT") ?? "10000",
+  Deno.env.get("REQUESTING_TIMEOUT") ?? "180000",
   10,
 );
 

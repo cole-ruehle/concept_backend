@@ -273,15 +273,17 @@ export default class UserHistoryConcept {
   }
 
   /**
-   * getUserStats(userId: String): (stats: ActivityStats)
+   * _getUserStats(userId: String): (stats: ActivityStats)
+   * 
+   * QUERY method for use in synchronizations with frames.query()
    * 
    * **requires** userId exists
    * 
-   * **effects** returns aggregated activity statistics for the user
+   * **effects** returns array containing aggregated activity statistics for the user
    */
-  async getUserStats({ userId }: { 
+  async _getUserStats({ userId }: { 
     userId: string 
-  }): Promise<{ 
+  }): Promise<Array<{
     stats: {
       totalHikes: number;
       totalDistance: number;
@@ -290,7 +292,7 @@ export default class UserHistoryConcept {
       favoriteLocations: string[];
       lastActiveAt: Date;
     }
-  } | { error: string }> {
+  }>> {
     let stats = await this.activityStats.findOne({ userId: userId as User });
     
     // If no stats exist, create default stats
@@ -309,7 +311,8 @@ export default class UserHistoryConcept {
       await this.activityStats.insertOne(stats);
     }
 
-    return {
+    // Return array for frames.query() compatibility
+    return [{
       stats: {
         totalHikes: stats.totalHikes,
         totalDistance: stats.totalDistance,
@@ -318,7 +321,31 @@ export default class UserHistoryConcept {
         favoriteLocations: stats.favoriteLocations,
         lastActiveAt: stats.lastActiveAt,
       }
-    };
+    }];
+  }
+
+  /**
+   * getUserStats(userId: String): (stats: ActivityStats)
+   * 
+   * **requires** userId exists
+   * 
+   * **effects** returns aggregated activity statistics for the user
+   */
+  async getUserStats({ userId }: { 
+    userId: string 
+  }): Promise<{ 
+    stats: {
+      totalHikes: number;
+      totalDistance: number;
+      totalDuration: number;
+      completionRate: number;
+      favoriteLocations: string[];
+      lastActiveAt: Date;
+    }
+  } | { error: string }> {
+    // Use the query method and return first result
+    const results = await this._getUserStats({ userId });
+    return results[0];
   }
 
   /**

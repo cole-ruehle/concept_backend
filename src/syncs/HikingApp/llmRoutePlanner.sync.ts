@@ -17,9 +17,24 @@ import { actions, Frames, Sync } from "@engine";
 // ============================================================================
 
 /**
+ * LLMRoutePlannerAutoAuthenticate
+ * 
+ * Purpose: Automatically trigger authentication when LLM route planning is requested
+ * This sync fires FIRST to authenticate the user
+ */
+export const LLMRoutePlannerAutoAuthenticate: Sync = ({ request, sessionToken, query, userLocation, preferences, currentRoute }) => ({
+  when: actions([
+    Requesting.request,
+    { path: "/llmRoutePlanner/planRoute", sessionToken, query, userLocation, preferences, currentRoute },
+    { request },
+  ]),
+  then: actions([User.authenticate, { sessionToken }]),
+});
+
+/**
  * LLMRoutePlannerAuthenticatedRequest
  * 
- * Purpose: Authenticate user before allowing expensive LLM route planning
+ * Purpose: After authentication succeeds, call the LLM route planner
  * 
  * This is critical because:
  * - LLM API calls cost money (Gemini)
@@ -75,7 +90,11 @@ export const LLMRoutePlannerAuthenticationError: Sync = ({ request, error }) => 
  * 
  * Limits: 10 requests per hour per user
  * This can be adjusted based on usage patterns and cost analysis
+ * 
+ * TODO: This sync needs to be redesigned - rate limiting should be handled
+ * in the concept action itself or as middleware, not as a sync with empty actions.
  */
+/*
 export const LLMRoutePlannerRateLimit: Sync = ({ 
   request, 
   userId, 
@@ -112,6 +131,7 @@ export const LLMRoutePlannerRateLimit: Sync = ({
     // Continue with route planning - no action needed, just passes through
   ]),
 });
+*/
 
 // ============================================================================
 // Success Response
@@ -156,6 +176,8 @@ export const LLMRoutePlannerPlanRouteError: Sync = ({ request, error }) => ({
  * 
  * Note: LLM queries are marked as private by default since they might contain
  * personal information about where users want to go
+ * 
+ * Simplified: Stores the whole route object to avoid nested property access during sync registration
  */
 export const LLMRoutePlanningActivityRecording: Sync = ({ 
   userId, 
@@ -170,16 +192,10 @@ export const LLMRoutePlanningActivityRecording: Sync = ({
       userId,
       activityType: "route_planned",
       activityData: {
-        routeId: route.route_id,
-        routeName: route.name,
         query,
         method: "llm",
-        origin: route.origin,
-        destination: route.destination,
-        totalMinutes: route.metrics.totalMin,
-        segmentCount: route.segments.length
+        route  // Store whole route object instead of accessing nested properties
       },
-      location: route.destination,
       visibility: "private" // LLM queries are private by default
     }],
   ),

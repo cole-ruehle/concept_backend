@@ -55,7 +55,13 @@ export const UserRegistrationLifecycle: Sync = ({ userId, username }) => ({
  * 
  * Note: UserHistory entries are preserved for data integrity,
  * but are marked as belonging to a deleted user.
+ * 
+ * TODO: This sync is disabled because the User concept doesn't have a deleteUser action yet.
+ * To enable user deletion:
+ * 1. Add a deleteUser action to UserConcept.ts
+ * 2. Uncomment this sync
  */
+/*
 export const UserDeletionCascade: Sync = ({ userId }) => ({
   when: actions(
     [User.deleteUser, { userId }, { success: true }],
@@ -64,4 +70,5 @@ export const UserDeletionCascade: Sync = ({ userId }) => ({
     [Profile.deleteProfile, { userId }],
   ),
 });
+*/
 

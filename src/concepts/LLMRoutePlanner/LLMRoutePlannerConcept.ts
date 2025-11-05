@@ -104,26 +104,37 @@ export default class LLMRoutePlannerConcept {
     preferences?: UserPreferences;
     currentRoute?: CurrentRoute;
   }): Promise<{ route: RouteResponse["route"]; suggestions: string[] } | { error: string }> {
+    console.log("\n🎯 [LLMRoutePlanner.planRoute] Called!");
+    console.log(`   User: ${userId}`);
+    console.log(`   Query: ${query}`);
+    console.log(`   Location: ${userLocation.lat}, ${userLocation.lng}`);
+    
     // Validate inputs
     if (!query || query.trim().length === 0) {
+      console.log("❌ [LLMRoutePlanner] Validation failed: Empty query");
       return { error: "Query cannot be empty" };
     }
 
     if (!userLocation || typeof userLocation.lat !== "number" || typeof userLocation.lng !== "number") {
+      console.log("❌ [LLMRoutePlanner] Validation failed: Invalid location");
       return { error: "Invalid user location" };
     }
 
     if (userLocation.lat < -90 || userLocation.lat > 90) {
+      console.log("❌ [LLMRoutePlanner] Validation failed: Invalid latitude");
       return { error: "Latitude must be between -90 and 90" };
     }
 
     if (userLocation.lng < -180 || userLocation.lng > 180) {
+      console.log("❌ [LLMRoutePlanner] Validation failed: Invalid longitude");
       return { error: "Longitude must be between -180 and 180" };
     }
 
     const requestId = freshID();
     const timestamp = new Date();
     const startTime = Date.now();
+    
+    console.log("✅ [LLMRoutePlanner] Validation passed, calling orchestrator...");
 
     // Create request log entry
     const requestDoc: RouteRequestDoc = {
@@ -147,6 +158,10 @@ export default class LLMRoutePlannerConcept {
       });
 
       const durationMs = Date.now() - startTime;
+      
+      console.log(`✅ [LLMRoutePlanner] Orchestrator completed in ${durationMs}ms`);
+      console.log(`   Route: ${response.route.name}`);
+      console.log(`   Suggestions: ${response.suggestions.length} items`);
 
       // Update request log with success
       requestDoc.response = response;
@@ -161,6 +176,8 @@ export default class LLMRoutePlannerConcept {
       };
     } catch (error) {
       const durationMs = Date.now() - startTime;
+      
+      console.error(`❌ [LLMRoutePlanner] Error after ${durationMs}ms:`, error);
 
       // Log the failed request
       requestDoc.success = false;

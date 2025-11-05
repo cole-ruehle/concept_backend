@@ -71,13 +71,26 @@ export class RoutePlannerOrchestrator {
    * Main orchestration method
    */
   async planRoute(request: PlanRouteRequest): Promise<RouteResponse> {
-    console.log("Planning route for query:", request.query);
+    const totalStart = Date.now();
+    console.log("\n🚀 Planning route for query:", request.query);
 
     // Step 1: Use LLM to understand the query and create a plan
+    console.log("⏱️  Step 1: Generating plan with LLM...");
+    const llmStart = Date.now();
     const plan = await this.generateRoutePlan(request);
+    const llmDuration = Date.now() - llmStart;
+    console.log(`✅ LLM plan generated in ${llmDuration}ms`);
+    console.log("   Plan:", JSON.stringify(plan, null, 2));
 
     // Step 2: Execute the plan using Google Maps APIs
+    console.log("⏱️  Step 2: Executing plan with Google Maps...");
+    const mapsStart = Date.now();
     const route = await this.executeRoutePlan(plan, request);
+    const mapsDuration = Date.now() - mapsStart;
+    console.log(`✅ Maps execution completed in ${mapsDuration}ms`);
+
+    const totalDuration = Date.now() - totalStart;
+    console.log(`🎉 Total route planning time: ${totalDuration}ms (${(totalDuration/1000).toFixed(2)}s)\n`);
 
     return route;
   }

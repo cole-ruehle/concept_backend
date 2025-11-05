@@ -86,7 +86,13 @@ async function main() {
       }
 
       const instance = new ConceptClass(db);
-      const conceptApiName = conceptName;
+      // Convert concept name to match API specification naming convention
+      // User -> user, Profile -> profile, UserHistory -> userHistory, LLMRoutePlanner -> llmRoutePlanner
+      let conceptApiName = conceptName.charAt(0).toLowerCase() + conceptName.slice(1);
+      // Handle acronyms at the start (e.g., LLMRoutePlanner -> llmRoutePlanner)
+      if (conceptName.startsWith("LLM")) {
+        conceptApiName = "llm" + conceptName.slice(3);
+      }
       console.log(
         `- Registering concept: ${conceptName} at ${BASE_URL}/${conceptApiName}`,
       );
