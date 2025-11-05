@@ -56,11 +56,11 @@ export const inclusions: Record<string, string> = {
   "/api/UnifiedRouting/searchLocations": "public location search - no authentication needed",
   
   // UserHistory - Public feed only (no user-specific data)
-  "/api/userHistory/getPublicFeed": "public activity feed - aggregated public data only",
-  "/api/userHistory/getPopularRoutes": "public popular routes - aggregated anonymous data",
+  "/api/UserHistory/getPublicFeed": "public activity feed - aggregated public data only",
+  "/api/UserHistory/getPopularRoutes": "public popular routes - aggregated anonymous data",
   
   // LLMRoutePlanner - Public stats only
-  "/api/llmRoutePlanner/getGlobalStats": "public aggregate statistics - no user-specific data",
+  "/api/LLMRoutePlanner/getGlobalStats": "public aggregate statistics - no user-specific data",
 };
 
 /**
@@ -77,52 +77,53 @@ export const exclusions: Array<string> = [
   // ============================================================================
   // User Concept - ALL require authentication
   // ============================================================================
-  "/api/user/register",          // Goes through sync for lifecycle (Profile creation)
-  "/api/user/login",              // Goes through sync for session creation
-  "/api/user/authenticate",       // Protected authentication check
-  "/api/user/logout",             // Requires valid session
-  "/api/user/updatePassword",     // Requires authentication
-  "/api/user/getUserProfile",     // Requires authentication (user-specific data)
-  "/api/user/expireSessions",     // System action, not user-facing
+  "/api/User/register",          // Goes through sync for lifecycle (Profile creation)
+  "/api/User/login",              // Goes through sync for session creation
+  "/api/User/authenticate",       // Protected authentication check
+  "/api/User/logout",             // Requires valid session
+  "/api/User/updatePassword",     // Requires authentication
+  "/api/User/getUserProfile",     // Requires authentication (user-specific data)
+  "/api/User/expireSessions",     // System action, not user-facing
   
   // ============================================================================
   // Profile Concept - ALL require authentication
   // ============================================================================
-  "/api/profile/createProfile",          // Requires userId authentication
-  "/api/profile/updateProfile",          // Requires userId authentication
-  "/api/profile/setVisibility",          // Requires userId authentication
-  "/api/profile/getProfile",             // May need auth for stats integration
-  "/api/profile/searchProfiles",         // Consider: could be public if no sensitive data
-  "/api/profile/getNearbyActiveHikers",  // Privacy-sensitive location data
-  "/api/profile/getPublicProfile",       // Consider: could be passthrough if truly public
-  "/api/profile/deleteProfile",          // Requires userId authentication
+  "/api/Profile/createProfile",          // Requires userId authentication
+  "/api/Profile/updateProfile",          // Requires userId authentication
+  "/api/Profile/setVisibility",          // Requires userId authentication
+  "/api/Profile/getProfile",             // May need auth for stats integration
+  "/api/Profile/searchProfiles",         // Consider: could be public if no sensitive data
+  "/api/Profile/getNearbyActiveHikers",  // Privacy-sensitive location data
+  "/api/Profile/getPublicProfile",       // Consider: could be passthrough if truly public
+  "/api/Profile/deleteProfile",          // Requires userId authentication
   
   // ============================================================================
   // UserHistory Concept - User-specific actions require authentication
   // ============================================================================
-  "/api/userHistory/recordActivity",      // Requires userId authentication
-  "/api/userHistory/getUserHistory",      // User-specific data
-  "/api/userHistory/getUserStats",        // User-specific data
-  "/api/userHistory/updateVisibility",    // Requires userId authentication
-  "/api/userHistory/deleteActivity",      // Requires userId authentication
-  "/api/userHistory/getUserAchievements", // User-specific data
+  "/api/UserHistory/recordActivity",      // Requires userId authentication
+  "/api/UserHistory/getUserHistory",      // User-specific data
+  "/api/UserHistory/getUserStats",        // User-specific data
+  "/api/UserHistory/_getUserStats",       // Internal method (private)
+  "/api/UserHistory/updateVisibility",    // Requires userId authentication
+  "/api/UserHistory/deleteActivity",      // Requires userId authentication
+  "/api/UserHistory/getUserAchievements", // User-specific data
+  "/api/UserHistory/updateActivityStats", // Internal method
   // Note: getPublicFeed and getPopularRoutes are in inclusions (public data)
   
   // ============================================================================
   // LLMRoutePlanner Concept - ALL require authentication (expensive API calls)
   // ============================================================================
-  "/api/llmRoutePlanner/planRoute",           // CRITICAL: Expensive LLM + Maps API calls
-  "/api/llmRoutePlanner/getRequestHistory",   // User-specific data
-  "/api/llmRoutePlanner/getUsageStats",       // User-specific data
-  "/api/llmRoutePlanner/_getRecentRequestCount", // Internal method (private)
+  "/api/LLMRoutePlanner/planRoute",           // CRITICAL: Expensive LLM + Maps API calls
+  "/api/LLMRoutePlanner/getRequestHistory",   // User-specific data
+  "/api/LLMRoutePlanner/getUsageStats",       // User-specific data
+  "/api/LLMRoutePlanner/_getRecentRequestCount", // Internal method (private)
   // Note: getGlobalStats is in inclusions (aggregate public data)
   
   // ============================================================================
   // Internal/Utility Methods - Should never be directly accessible
   // ============================================================================
-  "/api/user/isValidEmail",          // Internal utility method
-  "/api/user/generateSecureToken",   // Internal utility method
-  "/api/user/hashPassword",          // Internal utility method
-  "/api/user/verifyPassword",        // Internal utility method
-  "/api/userHistory/updateActivityStats", // Internal method
+  "/api/User/isValidEmail",          // Internal utility method
+  "/api/User/generateSecureToken",   // Internal utility method
+  "/api/User/hashPassword",          // Internal utility method
+  "/api/User/verifyPassword",        // Internal utility method
 ];
