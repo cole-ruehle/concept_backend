@@ -21,11 +21,13 @@ import { actions, Frames, Sync } from "@engine";
  * 
  * Purpose: Automatically trigger authentication when LLM route planning is requested
  * This sync fires FIRST to authenticate the user
+ * 
+ * Note: We only match required fields (not currentRoute which is optional)
  */
-export const LLMRoutePlannerAutoAuthenticate: Sync = ({ request, sessionToken, query, userLocation, preferences, currentRoute }) => ({
+export const LLMRoutePlannerAutoAuthenticate: Sync = ({ request, sessionToken }) => ({
   when: actions([
     Requesting.request,
-    { path: "/llmRoutePlanner/planRoute", sessionToken, query, userLocation, preferences, currentRoute },
+    { path: "/llmRoutePlanner/planRoute", sessionToken },
     { request },
   ]),
   then: actions([User.authenticate, { sessionToken }]),
@@ -48,11 +50,10 @@ export const LLMRoutePlannerAuthenticatedRequest: Sync = ({
   userId,
   query,
   userLocation,
-  preferences,
-  currentRoute
+  preferences
 }) => ({
   when: actions(
-    [Requesting.request, { path: "/llmRoutePlanner/planRoute", sessionToken, query, userLocation, preferences, currentRoute }, { request }],
+    [Requesting.request, { path: "/llmRoutePlanner/planRoute", sessionToken, query, userLocation, preferences }, { request }],
     [User.authenticate, { sessionToken }, { userId }],
   ),
   then: actions([
@@ -60,8 +61,7 @@ export const LLMRoutePlannerAuthenticatedRequest: Sync = ({
       userId, 
       query, 
       userLocation, 
-      preferences, 
-      currentRoute 
+      preferences
     }
   ]),
 });

@@ -71,13 +71,14 @@ export const ProfileUpdateProfileError: Sync = ({ request, error }) => ({
 // Profile.setVisibility - Set Visibility Request/Response
 // ============================================================================
 
-export const ProfileSetVisibilityRequest: Sync = ({ request, userId, showLiveLocation, profileVisibility, shareStats, shareHomeLocation }) => ({
+// Simple approach: Match on required fields only, action will receive just those
+export const ProfileSetVisibilityRequest: Sync = ({ request, userId, showLiveLocation }) => ({
   when: actions([
     Requesting.request,
-    { path: "/profile/setVisibility", userId, showLiveLocation, profileVisibility, shareStats, shareHomeLocation },
+    { path: "/profile/setVisibility", userId, showLiveLocation },
     { request },
   ]),
-  then: actions([Profile.setVisibility, { userId, showLiveLocation, profileVisibility, shareStats, shareHomeLocation }]),
+  then: actions([Profile.setVisibility, { userId, showLiveLocation }]),
 });
 
 export const ProfileSetVisibilityResponse: Sync = ({ request, success }) => ({
